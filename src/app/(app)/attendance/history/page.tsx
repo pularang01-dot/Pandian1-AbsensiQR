@@ -56,7 +56,7 @@ export default async function HistoryPage({ searchParams }: { searchParams: Prom
     {
       key: "student", header: "Siswa",
       cell: (r) => {
-        const rec = one(r.attendance_records as { student_id: string; students: { full_name: string; nis: string } | { full_name: string; nis: string }[] | null; attendance_sessions: { session_date: string } | { session_date: string }[] | null } | null);
+        const rec = one(r.attendance_records as unknown as { student_id: string; students: { full_name: string; nis: string } | { full_name: string; nis: string }[] | null; attendance_sessions: { session_date: string } | { session_date: string }[] | null } | null);
         const s = one(rec?.students ?? null);
         const sess = one(rec?.attendance_sessions ?? null);
         return <div><p className="font-medium">{s?.full_name ?? "-"}</p><p className="text-xs text-ink-muted">{sess ? formatTanggal(sess.session_date, "d MMM yyyy") : ""}</p></div>;

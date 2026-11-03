@@ -33,15 +33,15 @@ export default async function QrCardsPage({ searchParams }: { searchParams: Prom
       .eq("class_id", classId)
       .is("end_date", null)
       .eq("students.status", "active");
-    const ids = (data ?? []).map((r) => one(r.students as { id: string } | { id: string }[] | null)?.id).filter(Boolean) as string[];
+    const ids = (data ?? []).map((r) => one(r.students as unknown as { id: string } | { id: string }[] | null)?.id).filter(Boolean) as string[];
     const { data: tokens } = ids.length
       ? await supabase.from("student_qr_tokens").select("student_id, token").in("student_id", ids).eq("is_active", true)
       : { data: [] as { student_id: string; token: string }[] };
     const tokenBy = new Map((tokens ?? []).map((t) => [t.student_id, t.token]));
     cards = (data ?? [])
       .map((r) => {
-        const st = one(r.students as { id: string; nis: string; full_name: string } | { id: string; nis: string; full_name: string }[] | null);
-        return st ? { id: st.id, name: st.full_name, nis: st.nis, className: one(r.classes as { name: string } | { name: string }[] | null)?.name ?? null, token: tokenBy.get(st.id) ?? null } : null;
+        const st = one(r.students as unknown as { id: string; nis: string; full_name: string } | { id: string; nis: string; full_name: string }[] | null);
+        return st ? { id: st.id, name: st.full_name, nis: st.nis, className: one(r.classes as unknown as { name: string } | { name: string }[] | null)?.name ?? null, token: tokenBy.get(st.id) ?? null } : null;
       })
       .filter((c): c is NonNullable<typeof c> => c !== null)
       .sort((a, b) => a.name.localeCompare(b.name, "id"));

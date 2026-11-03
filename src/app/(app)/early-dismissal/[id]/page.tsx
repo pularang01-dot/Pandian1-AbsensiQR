@@ -37,7 +37,7 @@ export default async function DismissalDetailPage({ params }: { params: Promise<
   const { data: profs } = await supabase.from("profiles").select("id, full_name").in("id", ids);
   for (const p of profs ?? []) names.set(p.id, p.full_name);
 
-  const s = one(r.students as { full_name: string; nis: string; student_class_assignments: AssignmentEmbed[] } | { full_name: string; nis: string; student_class_assignments: AssignmentEmbed[] }[] | null);
+  const s = one(r.students as unknown as { full_name: string; nis: string; student_class_assignments: AssignmentEmbed[] } | { full_name: string; nis: string; student_class_assignments: AssignmentEmbed[] }[] | null);
   const isApprover = user.roles.some((x) => APPROVER_ROLES.includes(x));
 
   return (

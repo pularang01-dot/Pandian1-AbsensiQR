@@ -73,7 +73,7 @@ export default async function StudentHistoryPage({ params }: { params: Promise<{
         <Section title={`Dispensasi (${disps.data?.length ?? 0})`}>
           {(disps.data ?? []).length === 0 ? <p className="text-sm text-ink-muted">Tidak ada dispensasi.</p> : (
             <ul className="divide-y divide-line">{(disps.data ?? []).map((d) => {
-              const x = one(d.dispensations as { id: string; name: string; category: string; starts_at: string; status: string } | { id: string; name: string; category: string; starts_at: string; status: string }[] | null);
+              const x = one(d.dispensations as unknown as { id: string; name: string; category: string; starts_at: string; status: string } | { id: string; name: string; category: string; starts_at: string; status: string }[] | null);
               return <li key={d.id} className="flex flex-wrap items-center justify-between gap-2 py-2 text-sm"><span>{x?.name} ({x ? DISPENSATION_CATEGORY[x.category] : ""}) | <span className="tabular">{x && formatTanggal(x.starts_at, "d MMM yyyy")}</span> | {PARTICIPATION_LABEL[d.participation]}{d.needs_review ? " | perlu ditinjau" : ""}</span>{x && <StatusBadge kind="dispensation" status={x.status} />}</li>;
             })}</ul>
           )}

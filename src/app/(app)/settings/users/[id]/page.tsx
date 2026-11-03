@@ -49,7 +49,7 @@ export default async function UserDetailPage({ params }: { params: Promise<{ id:
             <ul className="mb-4 divide-y divide-line rounded-lg border border-line">
               {(links ?? []).length === 0 && <li className="px-4 py-3 text-sm text-ink-muted">Belum ada siswa terhubung.</li>}
               {(links ?? []).map((l) => {
-                const s = one(l.students as { full_name: string; nis: string; student_class_assignments: AssignmentEmbed[] } | { full_name: string; nis: string; student_class_assignments: AssignmentEmbed[] }[] | null);
+                const s = one(l.students as unknown as { full_name: string; nis: string; student_class_assignments: AssignmentEmbed[] } | { full_name: string; nis: string; student_class_assignments: AssignmentEmbed[] }[] | null);
                 return (
                   <li key={l.id} className="flex flex-wrap items-center justify-between gap-3 px-4 py-3">
                     <div><p className="text-sm font-medium">{s?.full_name}</p><p className="text-xs text-ink-muted">Kelas {openClassName(s?.student_class_assignments) ?? "-"} | {l.relationship} | {l.is_active ? "Aktif" : "Dinonaktifkan"}</p></div>

@@ -68,7 +68,7 @@ export default async function ParentDashboard() {
                   <li key={r.id} className="px-5 py-3.5">
                     <div className="flex items-center justify-between gap-3">
                       <div>
-                        <p className="text-sm font-medium">{one(r.students as { full_name: string } | { full_name: string }[] | null)?.full_name} | {CATEGORY_LABEL[r.category]}</p>
+                        <p className="text-sm font-medium">{one(r.students as unknown as { full_name: string } | { full_name: string }[] | null)?.full_name} | {CATEGORY_LABEL[r.category]}</p>
                         <p className="text-xs text-ink-muted">{formatTanggal(r.start_date, "d MMM yyyy")}{r.end_date !== r.start_date ? ` - ${formatTanggal(r.end_date, "d MMM yyyy")}` : ""}</p>
                       </div>
                       <StatusBadge kind="request" status={r.status} />

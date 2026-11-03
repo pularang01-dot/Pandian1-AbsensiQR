@@ -55,14 +55,14 @@ export default async function StudentDetailPage({ params }: { params: Promise<{ 
   const schoolName = typeof schoolRes.data?.value === "string" && schoolRes.data.value ? schoolRes.data.value : "SDN PANDIAN 1 SUMENEP";
 
   const linked = ((links.data ?? []) as unknown as LinkRow[]).map((l) => {
-    const p = one(l.parents as { id: string; profiles: unknown } | null);
+    const p = one(l.parents as unknown as { id: string; profiles: unknown } | null);
     const prof = one(p?.profiles as { full_name: string; phone: string | null } | null);
     return { id: l.id, relationship: l.relationship, name: prof?.full_name ?? "Akun orang tua", phone: prof?.phone ?? null, parentId: p?.id ?? "" };
   });
   const linkedIds = new Set(linked.map((l) => l.parentId));
   const parentOptions = ((parentsRes.data ?? []) as unknown as { id: string; profiles: unknown }[])
     .filter((p) => !linkedIds.has(p.id))
-    .map((p) => ({ id: p.id, label: one(p.profiles as { full_name: string } | null)?.full_name ?? "Akun orang tua" }));
+    .map((p) => ({ id: p.id, label: one(p.profiles as unknown as { full_name: string } | null)?.full_name ?? "Akun orang tua" }));
 
   return (
     <>
@@ -124,7 +124,7 @@ export default async function StudentDetailPage({ params }: { params: Promise<{ 
             ) : (
               <ul className="divide-y divide-line">
                 {(att.data ?? []).map((r) => {
-                  const sess = one(r.attendance_sessions as { session_date: string } | { session_date: string }[] | null);
+                  const sess = one(r.attendance_sessions as unknown as { session_date: string } | { session_date: string }[] | null);
                   return (
                     <li key={r.id} className="flex items-center justify-between gap-3 px-5 py-3">
                       <div>
