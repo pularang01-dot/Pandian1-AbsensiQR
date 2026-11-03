@@ -56,7 +56,7 @@ export default async function StudentDetailPage({ params }: { params: Promise<{ 
 
   const linked = ((links.data ?? []) as unknown as LinkRow[]).map((l) => {
     const p = one(l.parents as unknown as { id: string; profiles: unknown } | null);
-    const prof = one(p?.profiles as { full_name: string; phone: string | null } | null);
+    const prof = one(p?.profiles as unknown as { full_name: string; phone: string | null } | null);
     return { id: l.id, relationship: l.relationship, name: prof?.full_name ?? "Akun orang tua", phone: prof?.phone ?? null, parentId: p?.id ?? "" };
   });
   const linkedIds = new Set(linked.map((l) => l.parentId));

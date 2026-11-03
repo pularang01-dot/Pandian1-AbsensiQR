@@ -8,7 +8,7 @@ export async function loadTeachers(): Promise<{ id: string; name: string }[]> {
   const { data } = await supabase.from("user_roles").select("user_id, profiles(full_name, is_active)").eq("role", "teacher");
   return (data ?? [])
     .map((r) => {
-      const p = one(r.profiles as { full_name: string; is_active: boolean } | { full_name: string; is_active: boolean }[] | null);
+      const p = one(r.profiles as unknown as { full_name: string; is_active: boolean } | { full_name: string; is_active: boolean }[] | null);
       return p?.is_active ? { id: r.user_id as string, name: p.full_name } : null;
     })
     .filter((t): t is { id: string; name: string } => t !== null)

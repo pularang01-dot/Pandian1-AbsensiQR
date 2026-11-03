@@ -41,7 +41,7 @@ export default async function PermissionDetailPage({ params }: { params: Promise
     for (const p of data ?? []) names.set(p.id, p.full_name);
   }
 
-    const s = one(r.students as unknown as { full_name: string; nis: string; status: string; student_class_assignments: { end_date: string | null; classes: { name: string } | { name: string }[] | null }[] } | { full_name: string; nis: string; status: string; student_class_assignments: { end_date: string | null; classes: { name: string } | { name: string }[] | null }[] }[] | null);
+  const s = one(r.students as unknown as { full_name: string; nis: string; status: string; student_class_assignments: { end_date: string | null; classes: { name: string } | { name: string }[] | null }[] } | { full_name: string; nis: string; status: string; student_class_assignments: { end_date: string | null; classes: { name: string } | { name: string }[] | null }[] }[] | null);
   const open = s?.student_class_assignments.find((a) => a.end_date === null);
   const cls = open ? one(open.classes)?.name : null;
   const docs = (r.permission_documents ?? []) as { id: string; file_name: string; mime_type: string; size_bytes: number }[];
