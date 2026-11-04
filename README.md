@@ -4,7 +4,7 @@ Sistem absensi, izin, dispensasi, pulang lebih awal, dan pelaporan untuk SDN Pan
 
 Teknologi: Next.js 15 (App Router), React 19, TypeScript, Tailwind CSS, Supabase (PostgreSQL, Auth, RLS, Storage privat), Zod, React Hook Form, zxing (pemindai QR), recharts, jsPDF dan xlsx (ekspor).
 
-> Status verifikasi yang jujur: migrasi basis data dan aturan perilaku (RLS, RPC) sudah diuji pada PostgreSQL 16 lokal dengan stub Supabase (102 pemeriksaan lulus). Kode aplikasi baru melewati pemeriksaan sintaks dan impor. `npm run build`, `lint`, `typecheck`, dan pengujian peramban BELUM dijalankan karena dependensi belum dipasang. Lihat docs/TESTING_CHECKLIST.md dan jalankan sebelum dipakai.
+> Status verifikasi yang jujur: migrasi basis data dan aturan perilaku (RLS, RPC) sudah diuji pada PostgreSQL 16 lokal dengan stub Supabase (122 pemeriksaan lulus). Kode aplikasi baru melewati pemeriksaan sintaks dan impor. `npm run build`, `lint`, `typecheck`, dan pengujian peramban BELUM dijalankan karena dependensi belum dipasang. Lihat docs/TESTING_CHECKLIST.md dan jalankan sebelum dipakai.
 
 ## Modul
 
@@ -28,14 +28,14 @@ npm install
 
 1. Buat proyek di https://supabase.com. Catat Project URL, anon key, dan service-role key (Project Settings > API).
 2. Buka SQL Editor, jalankan berkas berikut BERURUTAN, satu per satu, dan pastikan tiap berkas selesai tanpa galat:
-   `supabase/migrations/001_schema.sql` sampai `008_settings.sql`.
+   `supabase/migrations/001_schema.sql` sampai `011_reconcile_class.sql`.
    (Atau dengan CLI: `supabase db push` pada proyek yang sudah di-link.)
 3. Authentication > Providers: aktifkan Email. Nonaktifkan pendaftaran mandiri (Sign ups) agar akun hanya dibuat administrator.
 4. Authentication > URL Configuration: Site URL = alamat aplikasi; tambahkan `<alamat>/auth/callback` ke Redirect URLs.
 5. Authentication > Email Templates: agar tautan undangan dan pemulihan bekerja di server, ubah tautan templat Invite dan Reset Password menjadi
    `{{ .SiteURL }}/auth/callback?token_hash={{ .TokenHash }}&type=invite&next=/reset-password`
    dan `...&type=recovery&next=/reset-password`.
-6. Atur SMTP sendiri untuk pemakaian nyata; layanan email bawaan Supabase sangat dibatasi. Panduan Brevo langkah demi langkah: docs/EMAIL_SETUP_BREVO.md.
+6. Atur SMTP sendiri untuk pemakaian nyata; layanan email bawaan Supabase sangat dibatasi. Panduan Brevo langkah demi langkah: docs/EMAIL_SETUP_BREVO.md. Login Google untuk staf (opsional): docs/GOOGLE_LOGIN_SETUP.md.
 7. Storage: bucket privat `permission-documents` dibuat oleh migrasi 004. Jangan dijadikan publik.
 
 ## Variabel lingkungan
@@ -47,7 +47,8 @@ Salin `.env.example` menjadi `.env.local` dan isi:
 | NEXT_PUBLIC_SUPABASE_URL | URL proyek |
 | NEXT_PUBLIC_SUPABASE_ANON_KEY | Kunci anon (publik) |
 | SUPABASE_SERVICE_ROLE_KEY | Rahasia. Hanya server. Jangan diawali NEXT_PUBLIC_ dan jangan di-commit |
-| NEXT_PUBLIC_APP_URL | Alamat aplikasi, untuk tautan email |
+| NEXT_PUBLIC_APP_URL | Alamat aplikasi, untuk tautan email dan login Google |
+| NEXT_PUBLIC_GOOGLE_LOGIN_ENABLED | `true` untuk menampilkan tombol Masuk dengan Google (setelah provider diaktifkan) |
 
 ## Administrator awal (aman, tanpa akun bawaan)
 
@@ -77,8 +78,12 @@ Perlu PostgreSQL 16 lokal: `bash supabase/tests/run_local.sh`. Skrip membuat kla
 
 ## Dokumentasi
 
-docs/EMAIL_SETUP_BREVO.md, docs/SYSTEM_ARCHITECTURE.md, DATABASE_SCHEMA.md, ROLE_PERMISSIONS.md, ATTENDANCE_SOP.md, PERMISSION_SOP.md, DISPENSATION_SOP.md, EARLY_DISMISSAL_SOP.md, SECURITY_AND_PRIVACY.md, HANDOVER_GUIDE.md, TESTING_CHECKLIST.md.
+docs/EMAIL_SETUP_BREVO.md, docs/GOOGLE_LOGIN_SETUP.md, docs/SYSTEM_ARCHITECTURE.md, DATABASE_SCHEMA.md, ROLE_PERMISSIONS.md, ATTENDANCE_SOP.md, PERMISSION_SOP.md, DISPENSATION_SOP.md, EARLY_DISMISSAL_SOP.md, SECURITY_AND_PRIVACY.md, HANDOVER_GUIDE.md, TESTING_CHECKLIST.md.
 
 ## Keterbatasan yang diketahui
 
 Pemindai QR tidak memiliki antrean offline (sengaja: kegagalan ditampilkan jelas, tidak ada data semu). Notifikasi hanya di dalam aplikasi (tanpa WhatsApp/SMS/push). Tidak ada ekspor kartu QR massal ke PDF selain cetak peramban. Pengujian peramban dan beban belum dilakukan.
+
+## Hak cipta
+
+Hak Cipta (c) 2026 Viky Aditama. Dikembangkan oleh Viky Aditama bersama Tim PPL SDN Pandian 1 Sumenep, Universitas PGRI Sumenep 2026. Seluruh hak dilindungi. Ketentuan penggunaan ada di [LICENSE.md](LICENSE.md). Teks hak cipta pada aplikasi diatur di `src/lib/copyright.ts`.

@@ -3,6 +3,7 @@
 import { useState, type ReactNode } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { CopyrightFooter } from "./copyright-footer";
 import { Bell, GraduationCap, LogOut, Menu, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { navForRole, isActive } from "@/lib/navigation";
@@ -133,6 +134,7 @@ export function AppShell({
       </header>
 
       <main className="mx-auto w-full max-w-7xl px-4 py-6 sm:px-6 lg:py-8">{children}</main>
+      <div className="px-4 pb-6 sm:px-6"><CopyrightFooter /></div>
     </div>
   );
 }

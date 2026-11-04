@@ -2,6 +2,8 @@
   "name": "pandian-smart-attendance",
   "version": "0.1.0",
   "private": true,
+  "author": "Viky Aditama",
+  "license": "SEE LICENSE IN LICENSE.md",
   "description": "Sistem Absensi, Izin, dan Administrasi Siswa SDN Pandian 1 Sumenep",
   "scripts": {
     "dev": "next dev",
