@@ -42,9 +42,15 @@ export async function setUserActiveAction(userId: string, active: boolean): Prom
   const admin = createAdminClient();
   const { error } = await admin.from("profiles").update({ is_active: active }).eq("id", userId);
   if (error) return { ok: false, message: friendlyDbError(error) };
-  await audit(caller.id, active ? "activate_user" : "deactivate_user", userId, {});
+  let cleared = 0;
+  if (!active) {
+    const { data: n } = await admin.rpc("clear_homeroom_for_user", { p_user: userId, p_reason: "akun dinonaktifkan" });
+    cleared = Number(n ?? 0);
+  }
+  await audit(caller.id, active ? "activate_user" : "deactivate_user", userId, { homeroom_cleared: cleared });
   revalidatePath("/settings/users");
-  return { ok: true, message: active ? "Akun diaktifkan." : "Akun dinonaktifkan. Pengguna tidak dapat masuk." };
+  revalidatePath("/classes");
+  return { ok: true, message: active ? "Akun diaktifkan." : `Akun dinonaktifkan. Pengguna tidak dapat masuk.${cleared ? ` Wali kelas ${cleared} kelas dikosongkan; tetapkan wali pengganti di menu Kelas.` : ""}` };
 }
 
 export async function setUserRolesAction(userId: string, roles: string[]): Promise<ActionState> {
@@ -69,6 +75,7 @@ export async function setUserRolesAction(userId: string, roles: string[]): Promi
   const toRemove = current.filter((r) => !next.includes(r));
   if (toAdd.length) { const { error } = await admin.from("user_roles").insert(toAdd); if (error) return { ok: false, message: friendlyDbError(error) }; }
   if (toRemove.length) { const { error } = await admin.from("user_roles").delete().eq("user_id", userId).in("role", toRemove); if (error) return { ok: false, message: friendlyDbError(error) }; }
+  if (toRemove.includes("teacher")) await admin.rpc("clear_homeroom_for_user", { p_user: userId, p_reason: "peran guru dicabut" });
   if (next.includes("parent")) {
     const { error } = await admin.from("parents").upsert({ profile_id: userId }, { onConflict: "profile_id" });
     if (error) return { ok: false, message: friendlyDbError(error) };

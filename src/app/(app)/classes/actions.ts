@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { z } from "zod";
 import { ADMIN_ROLES } from "@/lib/auth/roles";
 import { requireRole } from "@/lib/auth/session";
 import { createClient } from "@/lib/supabase/server";
@@ -31,4 +32,18 @@ export async function saveClassAction(_prev: ActionState, formData: FormData): P
   revalidatePath("/classes");
   if (id) revalidatePath(`/classes/${id}`);
   return { ok: true, message: id ? "Kelas diperbarui." : "Kelas dibuat." };
+}
+
+export async function moveHomeroomAction(fromClassId: string, toClassId: string): Promise<ActionState> {
+  await requireRole(ADMIN_ROLES);
+  const ok = z.string().uuid().safeParse(fromClassId).success && z.string().uuid().safeParse(toClassId).success;
+  if (!ok) return { ok: false, message: "Data tidak valid." };
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("move_homeroom_teacher", { p_from: fromClassId, p_to: toClassId });
+  if (error) return { ok: false, message: friendlyDbError(error) };
+  revalidatePath("/classes");
+  revalidatePath(`/classes/${fromClassId}`);
+  revalidatePath(`/classes/${toClassId}`);
+  const swapped = (data as { swapped?: boolean } | null)?.swapped;
+  return { ok: true, message: swapped ? "Wali kelas kedua kelas ditukar." : "Wali kelas dipindahkan. Kelas asal kini belum memiliki wali." };
 }

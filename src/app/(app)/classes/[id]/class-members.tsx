@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/field";
 import { assignClassAction } from "../../students/actions";
+import { moveHomeroomAction } from "../actions";
 
 function run(fn: () => Promise<{ ok: boolean; message?: string }>, router: ReturnType<typeof useRouter>, start: (cb: () => void) => void, after?: () => void) {
   start(async () => {
@@ -52,6 +53,29 @@ export function TransferStudent({ studentId, name, classes, currentClassId }: { 
         {options.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
       </Select>
       <Button size="sm" variant="outline" disabled={!target} loading={pending} onClick={() => run(() => assignClassAction(studentId, target), router, start, () => setTarget(""))}>Pindahkan</Button>
+    </div>
+  );
+}
+
+export function MoveHomeroom({ fromId, targets }: { fromId: string; targets: { id: string; name: string; teacher: string | null }[] }) {
+  const router = useRouter();
+  const [pending, start] = useTransition();
+  const [target, setTarget] = useState("");
+  const t = targets.find((x) => x.id === target);
+  if (targets.length === 0) return null;
+  return (
+    <div className="space-y-2">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
+        <div className="flex-1">
+          <label htmlFor="move-homeroom" className="field-label">Pindahkan wali kelas ini ke kelas</label>
+          <Select id="move-homeroom" value={target} onChange={(e) => setTarget(e.target.value)}>
+            <option value="">Pilih kelas tujuan</option>
+            {targets.map((c) => <option key={c.id} value={c.id}>{c.name} {c.teacher ? `(wali saat ini: ${c.teacher})` : "(belum ada wali)"}</option>)}
+          </Select>
+        </div>
+        <Button variant="secondary" disabled={!target} loading={pending} onClick={() => run(() => moveHomeroomAction(fromId, target), router, start, () => setTarget(""))}>Pindahkan wali</Button>
+      </div>
+      {t && <p className="text-xs text-ink-muted">{t.teacher ? `Wali kelas ${t.name} (${t.teacher}) akan bertukar tempat dengan wali kelas ini.` : `Kelas ini akan menjadi tanpa wali setelah dipindahkan. Tetapkan penggantinya lewat tombol Ubah.`}</p>}
     </div>
   );
 }
