@@ -56,14 +56,14 @@ export function CorrectButton({ recordId, studentName, currentStatus }: { record
   );
 }
 
-export function ReconcileButton({ date }: { date: string }) {
+export function ReconcileButton({ date, classId, className }: { date: string; classId?: string; className?: string }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [pending, start] = useTransition();
   const submit = () =>
     start(async () => {
       try {
-        const r = await reconcileAction(date);
+        const r = await reconcileAction(date, classId);
         if (r.ok) { toast.success(r.message); setOpen(false); router.refresh(); }
         else toast.error(r.message ?? "Rekonsiliasi gagal.");
       } catch {
@@ -72,14 +72,14 @@ export function ReconcileButton({ date }: { date: string }) {
     });
   return (
     <>
-      <Button variant="secondary" onClick={() => setOpen(true)}><ClipboardCheck className="h-4 w-4" aria-hidden />Rekonsiliasi hari ini</Button>
+      <Button variant="secondary" onClick={() => setOpen(true)}><ClipboardCheck className="h-4 w-4" aria-hidden />{classId ? `Rekonsiliasi kelas ${className ?? ""}` : "Rekonsiliasi hari ini"}</Button>
       <ConfirmDialog
         open={open}
         onClose={() => setOpen(false)}
         loading={pending}
         tone="danger"
         title="Lakukan rekonsiliasi?"
-        description="Semua siswa aktif yang belum memiliki catatan pada tanggal ini akan ditandai Alpa dan sesi absensi ditutup. Pastikan izin, sakit, dan kegiatan resmi sudah diproses. Perubahan selanjutnya hanya lewat koreksi beralasan."
+        description={classId ? `Siswa aktif kelas ${className ?? ""} yang belum memiliki catatan pada tanggal ini akan ditandai Alpa. Kelas lain tidak terpengaruh. Pastikan izin dan sakit sudah diproses. Perubahan selanjutnya hanya lewat koreksi beralasan.` : "Semua siswa aktif yang belum memiliki catatan pada tanggal ini akan ditandai Alpa dan sesi absensi ditutup. Pastikan izin, sakit, dan kegiatan resmi sudah diproses. Perubahan selanjutnya hanya lewat koreksi beralasan."}
         confirmLabel="Ya, rekonsiliasi"
         onConfirm={submit}
       />

@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { ADMIN_ROLES, APPROVER_ROLES, type Role } from "@/lib/auth/roles";
+import { APPROVER_ROLES, type Role } from "@/lib/auth/roles";
 import { requireRole } from "@/lib/auth/session";
 import { createClient } from "@/lib/supabase/server";
 import { sanitizeSearch, friendlyDbError, type ActionState } from "@/lib/validation/common";
@@ -79,13 +79,16 @@ export async function correctAttendanceAction(input: unknown): Promise<ActionSta
   return { ok: true, message: "Koreksi tersimpan dan tercatat dalam riwayat perubahan." };
 }
 
-export async function reconcileAction(date: string): Promise<ActionState & { marked?: number }> {
-  await requireRole(ADMIN_ROLES);
+export async function reconcileAction(date: string, classId?: string): Promise<ActionState & { marked?: number }> {
+  await requireRole(["super_admin", "school_admin", "teacher"]);
   if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return { ok: false, message: "Tanggal tidak valid." };
+  if (classId !== undefined && !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(classId)) return { ok: false, message: "Kelas tidak valid." };
   const supabase = await createClient();
-  const { data, error } = await supabase.rpc("reconcile_attendance", { p_date: date });
+  // Hak akses sebenarnya ditegakkan di basis data: wali kelas hanya dapat merekonsiliasi kelasnya sendiri.
+  const { data, error } = await supabase.rpc("reconcile_attendance", { p_date: date, p_class: classId ?? null });
   if (error) return { ok: false, message: friendlyDbError(error) };
   revalidatePath("/attendance");
   revalidatePath("/dashboard");
-  return { ok: true, marked: Number(data ?? 0), message: `Rekonsiliasi selesai. ${Number(data ?? 0)} siswa tanpa catatan ditandai Alpa dan sesi ditutup.` };
+  const n = Number(data ?? 0);
+  return { ok: true, marked: n, message: classId ? `Rekonsiliasi kelas selesai. ${n} siswa tanpa catatan ditandai Alpa.` : `Rekonsiliasi selesai. ${n} siswa tanpa catatan ditandai Alpa dan sesi ditutup.` };
 }

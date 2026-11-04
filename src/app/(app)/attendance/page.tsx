@@ -42,6 +42,7 @@ export default async function AttendancePage({ searchParams }: { searchParams: P
   const classId = classes.some((c) => c.id === asUuid(sp.class)) ? asUuid(sp.class) : null;
   const canCorrect = user.roles.some((r) => [...APPROVER_ROLES, "teacher"].includes(r));
   const isAdmin = user.roles.some((r) => ADMIN_ROLES.includes(r));
+  const myClass = !isAdmin && user.roles.includes("teacher") ? classes.find((c) => c.homeroom_teacher_id === user.id && c.is_active) : undefined;
   const canScan = user.roles.some((r) => ["super_admin", "school_admin", "teacher", "operator"].includes(r));
 
   let query = supabase
@@ -84,7 +85,7 @@ export default async function AttendancePage({ searchParams }: { searchParams: P
           <>
             {canScan && <Link href="/attendance/scanner" className="inline-flex h-11 items-center gap-2 rounded-lg bg-brand px-4 text-sm font-medium text-white hover:bg-[#2b68bd]"><ScanLine className="h-4 w-4" aria-hidden />Buka pemindai</Link>}
             <Link href="/attendance/history" className="inline-flex h-11 items-center gap-2 rounded-lg border border-line bg-surface px-4 text-sm font-medium hover:bg-canvas"><History className="h-4 w-4" aria-hidden />Riwayat koreksi</Link>
-            {isAdmin && <ReconcileButton date={date} />}
+            {isAdmin ? <ReconcileButton date={date} /> : myClass && <ReconcileButton date={date} classId={myClass.id} className={myClass.name} />}
           </>
         }
       />
