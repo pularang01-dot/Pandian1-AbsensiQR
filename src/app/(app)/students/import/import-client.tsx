@@ -10,25 +10,38 @@ import { importStudentsAction, type ImportResult } from "../actions";
 type Row = { nis: string; nisn: string; full_name: string; gender: string; class_name: string };
 
 const HEADER_ALIASES: Record<keyof Row, string[]> = {
-  nis: ["nis"],
-  nisn: ["nisn"],
-  full_name: ["nama", "nama lengkap", "full_name", "full name", "name"],
-  gender: ["jk", "l/p", "jenis kelamin", "gender"],
-  class_name: ["kelas", "class", "class_name"],
+  nis: ["nis", "no induk", "nomor induk", "nomor induk siswa"],
+  nisn: ["nisn", "nomor induk siswa nasional"],
+  full_name: ["nama", "nama siswa", "nama lengkap", "nama peserta didik", "peserta didik", "nama murid", "siswa", "full_name", "full name", "name"],
+  gender: ["jk", "l/p", "lp", "jenis kelamin", "kelamin", "gender"],
+  class_name: ["kelas", "rombel", "class", "class_name"],
 };
 const MAX_BYTES = 2 * 1024 * 1024;
 
-function normalize(raw: Record<string, unknown>): Row {
-  const lower: Record<string, string> = {};
-  for (const [k, v] of Object.entries(raw)) lower[k.trim().toLowerCase()] = String(v ?? "").trim();
-  const pick = (f: keyof Row) => HEADER_ALIASES[f].map((a) => lower[a]).find((v) => v !== undefined) ?? "";
-  const g = pick("gender").toUpperCase();
-  const gender = g.startsWith("L") ? "L" : g.startsWith("P") ? "P" : g.slice(0, 1);
-  return { nis: pick("nis"), nisn: pick("nisn"), full_name: pick("full_name"), gender, class_name: pick("class_name") };
+const key = (v: unknown) => String(v ?? "").trim().toLowerCase().replace(/[._]+/g, " ").replace(/\s+/g, " ");
+
+/** Cari baris judul (dalam 15 baris pertama) yang memuat kolom nama siswa. */
+function findHeaderRow(matrix: unknown[][]): number {
+  const names = new Set(HEADER_ALIASES.full_name);
+  for (let i = 0; i < Math.min(matrix.length, 15); i++) if (matrix[i].some((c) => names.has(key(c)))) return i;
+  return -1;
 }
 
-export function ImportClient({ years, defaultYearId }: { years: { id: string; name: string }[]; defaultYearId: string }) {
+function toRow(header: string[], cells: unknown[], defaultClass: string): Row {
+  const lower: Record<string, string> = {};
+  header.forEach((h, i) => { if (h && lower[h] === undefined) lower[h] = String(cells[i] ?? "").trim(); });
+  const pick = (f: keyof Row) => HEADER_ALIASES[f].map((a) => lower[a]).find((v) => v !== undefined && v !== "") ?? "";
+  const g = pick("gender").toUpperCase();
+  const gender = g.startsWith("L") ? "L" : g.startsWith("P") ? "P" : g.slice(0, 1);
+  let nisn = pick("nisn").replace(/\s+/g, "");
+  // NISN selalu 10 digit; Excel membuang angka nol di depan, jadi dilengkapi kembali.
+  if (/^\d{7,9}$/.test(nisn)) nisn = nisn.padStart(10, "0");
+  return { nis: pick("nis"), nisn, full_name: pick("full_name"), gender, class_name: pick("class_name") || defaultClass };
+}
+
+export function ImportClient({ years, classes, defaultYearId }: { years: { id: string; name: string }[]; classes: { id: string; name: string; academic_year_id: string }[]; defaultYearId: string }) {
   const [yearId, setYearId] = useState(defaultYearId);
+  const [defaultClass, setDefaultClass] = useState("");
   const [rows, setRows] = useState<Row[]>([]);
   const [fileName, setFileName] = useState("");
   const [parseError, setParseError] = useState("");
@@ -47,12 +60,20 @@ export function ImportClient({ years, defaultYearId }: { years: { id: string; na
     try {
       // Pustaka dimuat saat dibutuhkan agar halaman lain tidak ikut berat.
       const XLSX = await import("xlsx");
-      const wb = XLSX.read(await file.arrayBuffer(), { type: "array" });
+      const isCsv = /\.csv$/i.test(file.name);
+      // CSV dibaca sebagai teks apa adanya agar angka nol di depan NISN tidak hilang.
+      const wb = isCsv
+        ? XLSX.read(await file.text(), { type: "string", raw: true })
+        : XLSX.read(await file.arrayBuffer(), { type: "array" });
       const sheet = wb.Sheets[wb.SheetNames[0]];
       if (!sheet) return setParseError("Berkas tidak memiliki lembar data.");
-      const json = XLSX.utils.sheet_to_json<Record<string, unknown>>(sheet, { defval: "", raw: false });
-      const parsed = json.map(normalize).filter((r) => r.nis || r.full_name);
-      if (parsed.length === 0) return setParseError("Tidak ada baris data. Pastikan baris pertama berisi judul kolom: NIS, NISN, Nama, JK, Kelas.");
+      const all = XLSX.utils.sheet_to_json<unknown[]>(sheet, { header: 1, defval: "", raw: false, blankrows: false });
+      const h = findHeaderRow(all);
+      if (h < 0) return setParseError("Kolom nama siswa tidak ditemukan. Pastikan ada judul kolom 'Nama' atau 'Nama Siswa' di baris pertama.");
+      const header = all[h].map(key);
+      const body = all.slice(h + 1);
+      const parsed = body.map((c) => toRow(header, c, "")).filter((r) => r.nis || r.full_name);
+      if (parsed.length === 0) return setParseError("Tidak ada baris data siswa di bawah judul kolom.");
       if (parsed.length > 1000) return setParseError("Maksimal 1000 baris per impor. Pecah berkas menjadi beberapa bagian.");
       setRows(parsed);
     } catch {
@@ -60,11 +81,16 @@ export function ImportClient({ years, defaultYearId }: { years: { id: string; na
     }
   }
 
+  // Kelas bawaan dipakai untuk baris yang kolom Kelasnya kosong atau tidak ada.
+  const finalRows = rows.map((r) => ({ ...r, class_name: r.class_name || defaultClass }));
+  const yearClasses = classes.filter((c) => c.academic_year_id === yearId);
+  const missingNis = finalRows.filter((r) => !r.nis).length;
+
   async function submit() {
     setBusy(true);
     setResult(null);
     try {
-      const r = await importStudentsAction({ rows, year_id: yearId });
+      const r = await importStudentsAction({ rows: finalRows, year_id: yearId });
       setResult(r);
       if (r.ok) {
         toast.success(`${r.inserted ?? 0} siswa berhasil diimpor.`);
@@ -80,7 +106,7 @@ export function ImportClient({ years, defaultYearId }: { years: { id: string; na
   }
 
   function template() {
-    const csv = "﻿NIS,NISN,Nama,JK,Kelas\r\n1001,0123456789,Contoh Nama Siswa,L,1A\r\n";
+    const csv = "﻿NIS,NISN,Nama,JK,Kelas\r\n1001,0123456789,Contoh Nama Siswa,L,VI-A\r\n";
     const url = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
     const a = document.createElement("a");
     a.href = url;
@@ -96,6 +122,12 @@ export function ImportClient({ years, defaultYearId }: { years: { id: string; na
           <Field label="Tahun ajaran untuk penempatan kelas" htmlFor="year">
             <Select id="year" value={yearId} onChange={(e) => setYearId(e.target.value)}>
               {years.map((y) => <option key={y.id} value={y.id}>{y.name}</option>)}
+            </Select>
+          </Field>
+          <Field label="Kelas untuk semua siswa di berkas (opsional)" htmlFor="defclass">
+            <Select id="defclass" value={defaultClass} onChange={(e) => setDefaultClass(e.target.value)}>
+              <option value="">Ikuti kolom Kelas di berkas</option>
+              {yearClasses.map((c) => <option key={c.id} value={c.name}>{c.name}</option>)}
             </Select>
           </Field>
           <div>
@@ -114,7 +146,7 @@ export function ImportClient({ years, defaultYearId }: { years: { id: string; na
             onChange={(e) => onFile(e.target.files?.[0])}
             className="block w-full text-sm file:mr-3 file:h-11 file:rounded-lg file:border-0 file:bg-brand-light file:px-4 file:text-sm file:font-medium file:text-brand"
           />
-          <p className="mt-1 text-xs text-ink-muted">Kolom: NIS dan Nama wajib. NISN, JK (L/P), dan Kelas (nama kelas sesuai tahun ajaran) opsional. Kelas yang tidak ditemukan membuat baris dilewati.</p>
+          <p className="mt-1 text-xs text-ink-muted">Kolom yang dibaca: NIS dan Nama (atau Nama Siswa) wajib. NISN, JK atau L/P, dan Kelas opsional. Kolom lain, termasuk kolom tanggal 1-31 pada daftar hadir, diabaikan dan tidak diimpor. Jika berkas tidak punya kolom Kelas, pilih kelas di atas. Nama kelas harus sudah ada pada tahun ajaran terpilih.</p>
           {parseError && <p role="alert" className="mt-2 text-sm font-medium text-danger">{parseError}</p>}
         </div>
       </section>
@@ -126,7 +158,7 @@ export function ImportClient({ years, defaultYearId }: { years: { id: string; na
               <FileSpreadsheet className="h-5 w-5 text-brand" aria-hidden />
               <div>
                 <p className="text-sm font-semibold">{fileName}</p>
-                <p className="tabular text-xs text-ink-muted">{rows.length} baris siap diimpor. Pratinjau 8 baris pertama.</p>
+                <p className="tabular text-xs text-ink-muted">{rows.length} baris siap diimpor{defaultClass ? ` ke kelas ${defaultClass}` : ""}. Pratinjau 8 baris pertama.{missingNis > 0 ? ` ${missingNis} baris tanpa NIS akan dilewati.` : ""}</p>
               </div>
             </div>
             <Button onClick={submit} loading={busy}>Impor {rows.length} siswa</Button>
@@ -137,7 +169,7 @@ export function ImportClient({ years, defaultYearId }: { years: { id: string; na
                 {["NIS", "NISN", "Nama", "JK", "Kelas"].map((h) => <th key={h} scope="col" className="px-4 py-2.5 font-semibold">{h}</th>)}
               </tr></thead>
               <tbody className="divide-y divide-line">
-                {rows.slice(0, 8).map((r, i) => (
+                {finalRows.slice(0, 8).map((r, i) => (
                   <tr key={i}><td className="tabular px-4 py-2.5">{r.nis}</td><td className="tabular px-4 py-2.5">{r.nisn || "-"}</td><td className="px-4 py-2.5">{r.full_name}</td><td className="px-4 py-2.5">{r.gender || "-"}</td><td className="px-4 py-2.5">{r.class_name || "-"}</td></tr>
                 ))}
               </tbody>
