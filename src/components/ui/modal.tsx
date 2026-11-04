@@ -23,12 +23,16 @@ export function Modal({
   size?: "sm" | "md" | "lg";
 }) {
   const ref = useRef<HTMLDivElement>(null);
+  // onClose sering berupa fungsi baru di setiap render. Disimpan di ref agar efek di bawah hanya berjalan
+  // saat dialog dibuka/ditutup. Bila tidak, setiap ketikan memindahkan fokus dari kolom isian ke dialog.
+  const closeRef = useRef(onClose);
+  closeRef.current = onClose;
 
   useEffect(() => {
     if (!open) return;
     const prev = document.activeElement as HTMLElement | null;
     ref.current?.focus();
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && closeRef.current();
     document.addEventListener("keydown", onKey);
     document.body.style.overflow = "hidden";
     return () => {
@@ -36,7 +40,7 @@ export function Modal({
       document.body.style.overflow = "";
       prev?.focus();
     };
-  }, [open, onClose]);
+  }, [open]);
 
   if (!open) return null;
   return (

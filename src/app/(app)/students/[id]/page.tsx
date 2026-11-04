@@ -7,6 +7,7 @@ import { requireRole } from "@/lib/auth/session";
 import { createClient } from "@/lib/supabase/server";
 import { PageHeader } from "@/components/ui/page-header";
 import { StatusBadge } from "@/components/ui/status-badge";
+import { DeleteStudentsDialog } from "@/components/students/delete-students-dialog";
 import { EmptyState } from "@/components/ui/states";
 import { QrCard } from "@/components/students/qr-card";
 import { asUuid, loadClasses, loadYears, pickYear } from "@/lib/data/lookups";
@@ -56,7 +57,7 @@ export default async function StudentDetailPage({ params }: { params: Promise<{ 
 
   const linked = ((links.data ?? []) as unknown as LinkRow[]).map((l) => {
     const p = one(l.parents as unknown as { id: string; profiles: unknown } | null);
-    const prof = one(p?.profiles as unknown as { full_name: string; phone: string | null } | null);
+    const prof = one(p?.profiles as { full_name: string; phone: string | null } | null);
     return { id: l.id, relationship: l.relationship, name: prof?.full_name ?? "Akun orang tua", phone: prof?.phone ?? null, parentId: p?.id ?? "" };
   });
   const linkedIds = new Set(linked.map((l) => l.parentId));
@@ -88,7 +89,10 @@ export default async function StudentDetailPage({ params }: { params: Promise<{ 
             {isAdmin && (
               <div className="mt-5 space-y-4 border-t border-line pt-5">
                 <AssignClassForm studentId={s.id} classes={classes.filter((c) => c.is_active)} currentClassId={open?.class_id ?? null} />
-                <StatusButton studentId={s.id} status={s.status} />
+                <div className="flex flex-wrap items-center gap-2">
+                  <StatusButton studentId={s.id} status={s.status} />
+                  <DeleteStudentsDialog target={{ studentId: s.id }} subject={`data siswa ${s.full_name} (NIS ${s.nis})`} buttonLabel="Hapus data siswa" redirectTo="/students" />
+                </div>
               </div>
             )}
           </section>

@@ -12,6 +12,7 @@ import { loadProfileNames, loadTeachers } from "@/lib/data/teachers";
 import { one } from "@/lib/data/students";
 import { ClassFormButton } from "../class-form";
 import { formatTanggal } from "@/lib/utils";
+import { DeleteStudentsDialog } from "@/components/students/delete-students-dialog";
 import { AddStudentToClass, MoveHomeroom, TransferStudent } from "./class-members";
 
 export const metadata: Metadata = { title: "Rincian Kelas" };
@@ -95,6 +96,14 @@ export default async function ClassDetailPage({ params }: { params: Promise<{ id
         <DataTable caption={`Daftar siswa kelas ${cls.name}`} columns={columns} rows={members} rowKey={(m) => m.id} emptyTitle="Belum ada siswa di kelas ini" emptyDescription={isAdmin ? "Tambahkan siswa dari bagian di bawah, atau impor siswa dengan kolom Kelas." : undefined} />
         {isAdmin && <div className="border-t border-line p-4"><AddStudentToClass classId={cls.id} candidates={candidates} /></div>}
       </div>
+
+      {isAdmin && members.length > 0 && (
+        <section className="card mt-6 border-danger/30 p-5">
+          <h2 className="text-base font-semibold text-danger">Zona berbahaya</h2>
+          <p className="mb-3 mt-1 text-sm text-ink-muted">Hapus permanen seluruh siswa di kelas ini. Hanya siswa tanpa riwayat yang dapat dihapus. Sistem akan menampilkan peringatan dan meminta konfirmasi sebelum menghapus.</p>
+          <DeleteStudentsDialog target={{ classId: cls.id }} subject={`seluruh siswa kelas ${cls.name}`} buttonLabel={`Hapus data siswa kelas ${cls.name}`} size="md" />
+        </section>
+      )}
 
       {isAdmin && cls.homeroom_teacher_id && moveTargets.length > 0 && (
         <section className="card mt-6 p-5"><MoveHomeroom fromId={cls.id} targets={moveTargets} /></section>
