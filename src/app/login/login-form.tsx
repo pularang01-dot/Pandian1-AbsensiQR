@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useActionState } from "react";
 import { Button } from "@/components/ui/button";
 import { Field, Input } from "@/components/ui/field";
+import { PasswordInput } from "@/components/ui/password-input";
 import { googleSignInAction, signInAction } from "./actions";
 import type { ActionState } from "@/lib/validation/auth";
 
@@ -38,7 +39,7 @@ export function LoginForm({ next, urlError, googleEnabled }: { next: string; url
       </Field>
 
       <Field label="Kata sandi" htmlFor="password" error={state.fieldErrors?.password} required>
-        <Input id="password" name="password" type="password" autoComplete="current-password" />
+        <PasswordInput id="password" name="password" autoComplete="current-password" />
       </Field>
 
       <div className="flex justify-end">
