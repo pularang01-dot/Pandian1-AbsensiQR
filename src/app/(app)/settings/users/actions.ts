@@ -127,3 +127,93 @@ export async function resendInviteAction(userId: string): Promise<ActionState> {
   await audit(caller.id, "resend_invite", userId, {});
   return { ok: true, message: "Tautan pembuatan kata sandi dikirim ulang." };
 }
+
+// ------------------------------------------------------------------ Hapus akun (khusus Super Admin)
+export type DeleteAccountsResult = {
+  ok: boolean;
+  message?: string;
+  total?: number;
+  deletable?: { id: string; name: string; email: string | null }[];
+  blocked?: { id: string; name: string; reason: string }[];
+  deleted?: number;
+};
+
+const FOOTPRINT_LABEL: Record<string, string> = {
+  "attendance_records.recorded_by": "mencatat absensi",
+  "attendance_corrections.corrected_by": "mengoreksi absensi",
+  "attendance_sessions.created_by": "membuat sesi absensi",
+  "class_homeroom_history.teacher_id": "pernah menjadi wali kelas",
+  "class_homeroom_history.changed_by": "mengubah wali kelas",
+  "classes.homeroom_teacher_id": "saat ini menjadi wali kelas",
+  "dispensation_students.confirmed_by": "mengonfirmasi dispensasi",
+  "dispensations.requested_by": "mengajukan dispensasi",
+  "dispensations.reviewed_by": "meninjau dispensasi",
+  "dispensations.supervisor_id": "menjadi pendamping dispensasi",
+  "early_dismissal_handover_logs.responsible_staff_id": "melakukan serah terima siswa",
+  "early_dismissal_requests.requested_by": "mengajukan pulang lebih awal",
+  "early_dismissal_requests.reviewed_by": "meninjau pulang lebih awal",
+  "permission_documents.uploaded_by": "mengunggah dokumen izin",
+  "permission_request_events.actor_id": "tercatat pada riwayat izin",
+  "permission_requests.requested_by": "mengajukan izin atau sakit",
+  "permission_requests.reviewed_by": "meninjau izin atau sakit",
+  "school_calendar.created_by": "mengisi kalender sekolah",
+  "student_qr_tokens.issued_by": "menerbitkan kode QR",
+  "student_qr_tokens.revoked_by": "mencabut kode QR",
+  "system_settings.updated_by": "mengubah pengaturan sistem",
+  "user_roles.granted_by": "memberi peran kepada pengguna lain",
+};
+
+async function evaluateDeletion(callerId: string, ids: string[]): Promise<{ deletable: NonNullable<DeleteAccountsResult["deletable"]>; blocked: NonNullable<DeleteAccountsResult["blocked"]> }> {
+  const admin = createAdminClient();
+  const deletable: NonNullable<DeleteAccountsResult["deletable"]> = [];
+  const blocked: NonNullable<DeleteAccountsResult["blocked"]> = [];
+  for (const id of ids) {
+    const { data: prof } = await admin.from("profiles").select("full_name").eq("id", id).maybeSingle();
+    const name = prof?.full_name ?? "Akun tidak ditemukan";
+    if (!prof) { blocked.push({ id, name, reason: "Akun tidak ditemukan." }); continue; }
+    if (id === callerId) { blocked.push({ id, name, reason: "Akun Anda sendiri tidak dapat dihapus." }); continue; }
+    const roles = await targetRoles(id);
+    if (roles.includes("super_admin")) { blocked.push({ id, name, reason: "Akun Super Admin tidak dapat dihapus dari sini." }); continue; }
+    const { data: fp, error } = await admin.rpc("account_footprint", { p_user: id });
+    if (error) { blocked.push({ id, name, reason: "Pemeriksaan aktivitas gagal. Tidak dihapus demi keamanan." }); continue; }
+    const keys = Object.keys((fp ?? {}) as Record<string, number>);
+    if (keys.length > 0) {
+      const why = [...new Set(keys.map((k) => FOOTPRINT_LABEL[k] ?? "memiliki aktivitas lain"))].join(", ");
+      blocked.push({ id, name, reason: `Akun pernah ${why}. Nonaktifkan saja agar riwayat utuh.` });
+      continue;
+    }
+    const { data: au } = await admin.auth.admin.getUserById(id);
+    deletable.push({ id, name, email: au?.user?.email ?? null });
+  }
+  return { deletable, blocked };
+}
+
+const idsSchema = z.array(z.string().uuid()).min(1, "Pilih akun.").max(100, "Maksimal 100 akun sekaligus.");
+
+/** Pratinjau: tidak menghapus apa pun. */
+export async function previewDeleteAccountsAction(ids: string[]): Promise<DeleteAccountsResult> {
+  const caller = await requireRole(["super_admin"]);
+  const parsed = idsSchema.safeParse(ids);
+  if (!parsed.success) return { ok: false, message: parsed.error.issues[0]?.message ?? "Data tidak valid." };
+  const { deletable, blocked } = await evaluateDeletion(caller.id, [...new Set(parsed.data)]);
+  return { ok: true, total: parsed.data.length, deletable, blocked };
+}
+
+/** Hapus permanen akun yang tidak punya jejak. Pemeriksaan diulang di server; daftar dari peramban tidak dipercaya. */
+export async function deleteAccountsAction(ids: string[], confirm: string): Promise<DeleteAccountsResult> {
+  const caller = await requireRole(["super_admin"]);
+  if (confirm !== "HAPUS") return { ok: false, message: "Ketik HAPUS (huruf besar) untuk melanjutkan." };
+  const parsed = idsSchema.safeParse(ids);
+  if (!parsed.success) return { ok: false, message: parsed.error.issues[0]?.message ?? "Data tidak valid." };
+  const { deletable, blocked } = await evaluateDeletion(caller.id, [...new Set(parsed.data)]);
+  const admin = createAdminClient();
+  let deleted = 0;
+  for (const d of deletable) {
+    const { error } = await admin.auth.admin.deleteUser(d.id); // profil, peran, tautan orang tua, dan notifikasi ikut terhapus
+    if (error) { blocked.push({ id: d.id, name: d.name, reason: "Gagal dihapus. Coba lagi." }); continue; }
+    deleted++;
+    await audit(caller.id, "delete_user", d.id, { name_length: d.name.length, email_domain: d.email?.split("@")[1] ?? null });
+  }
+  revalidatePath("/settings/users");
+  return { ok: true, deleted, blocked, message: `${deleted} akun dihapus permanen.` };
+}

@@ -8,6 +8,9 @@ import { FilterBar, FilterField } from "@/components/ui/filter-bar";
 import { Input, Select } from "@/components/ui/field";
 import { ConfirmAction } from "@/components/settings/row-action";
 import { UserCreateForm } from "@/components/settings/user-create-form";
+import { DeleteAccountsDialog } from "@/components/settings/delete-accounts-dialog";
+import { loadAuthInfo } from "@/lib/users/auth-info";
+import { formatTanggal } from "@/lib/utils";
 import { asUuid, loadYears, pickYear } from "@/lib/data/lookups";
 import { one, openClassName, type AssignmentEmbed } from "@/lib/data/students";
 import { createUserAction, resendInviteAction, setUserActiveAction } from "./actions";
@@ -32,7 +35,7 @@ function primaryGroup(rs: Role[]): GroupKey {
   return "none";
 }
 
-type Sp = { year?: string; tab?: string; q?: string; status?: string };
+type Sp = { year?: string; tab?: string; q?: string; status?: string; login?: string };
 
 export default async function UsersPage({ searchParams }: { searchParams: Promise<Sp> }) {
   const me = await requireRole(ADMIN_ROLES);
@@ -43,7 +46,9 @@ export default async function UsersPage({ searchParams }: { searchParams: Promis
   const tab = GROUPS.find((g) => g.tab === sp.tab)?.key ?? null;
   const q = (sp.q ?? "").trim().toLowerCase().slice(0, 80);
   const status = sp.status === "aktif" || sp.status === "nonaktif" ? sp.status : "";
+  const loginFilter = sp.login === "belum" ? "belum" : "";
 
+  const authInfo = await loadAuthInfo();
   const [{ data: profiles }, { data: roles }, { data: studs }, classesRes, parentsRes, linksRes, asgRes, totalsRes] = await Promise.all([
     supabase.from("profiles").select("id, full_name, phone, is_active").order("full_name").limit(1000),
     supabase.from("user_roles").select("user_id, role"),
@@ -85,7 +90,7 @@ export default async function UsersPage({ searchParams }: { searchParams: Promis
     const rs = roleMap.get(p.id) ?? [];
     return { ...p, roles: rs, group: primaryGroup(rs) };
   });
-  const matches = (p: (typeof all)[number]) => (!status || (status === "aktif") === p.is_active) && (!q || p.full_name.toLowerCase().includes(q) || (p.phone ?? "").toLowerCase().includes(q));
+  const matches = (p: (typeof all)[number]) => (!status || (status === "aktif") === p.is_active) && (!loginFilter || (authInfo.size > 0 && !authInfo.get(p.id)?.lastSignIn)) && (!q || p.full_name.toLowerCase().includes(q) || (p.phone ?? "").toLowerCase().includes(q));
   const shown = all.filter(matches);
   const countOf = (g: GroupKey) => all.filter((p) => p.group === g).length;
 
@@ -101,6 +106,15 @@ export default async function UsersPage({ searchParams }: { searchParams: Promis
   const noRole = all.filter((p) => p.group === "none" && p.is_active);
   if (noRole.length) attention.push({ text: `${noRole.length} akun aktif belum memiliki peran.`, href: "/settings/users?tab=tanpa-peran" });
 
+  // Akun aktif yang belum pernah masuk lebih dari 14 hari sejak dibuat (undangan tidak diterima / akun tidak terpakai).
+  const STALE_DAYS = 14;
+  const staleCutoff = Date.now() - STALE_DAYS * 86400000;
+  const stale = authInfo.size === 0 ? [] : all.filter((p) => {
+    const a = authInfo.get(p.id);
+    return p.is_active && p.id !== me.id && !p.roles.includes("super_admin") && a && !a.lastSignIn && a.createdAt && new Date(a.createdAt).getTime() < staleCutoff;
+  });
+  if (stale.length) attention.push({ text: `${stale.length} akun aktif belum pernah masuk lebih dari ${STALE_DAYS} hari sejak dibuat (undangan belum diterima atau akun tidak terpakai): ${stale.slice(0, 3).map((p) => p.full_name).join(", ")}${stale.length > 3 ? ", dan lainnya" : ""}.`, href: "/settings/users?login=belum" });
+
   const students = ((studs ?? []) as unknown as { id: string; nis: string; full_name: string; student_class_assignments: AssignmentEmbed[] }[]).map((s) => ({
     id: s.id, label: `${s.full_name} (${openClassName(s.student_class_assignments) ?? "tanpa kelas"}, NIS ${s.nis})`,
   }));
@@ -111,6 +125,7 @@ export default async function UsersPage({ searchParams }: { searchParams: Promis
     if (t) u.set("tab", t);
     if (q) u.set("q", q);
     if (status) u.set("status", status);
+    if (loginFilter) u.set("login", loginFilter);
     return `/settings/users?${u.toString()}`;
   };
 
@@ -155,7 +170,8 @@ export default async function UsersPage({ searchParams }: { searchParams: Promis
       <li key={p.id} className="flex flex-wrap items-start justify-between gap-3 px-4 py-3">
         <div className="min-w-0 space-y-0.5">
           <p className="font-medium"><Link href={`/settings/users/${p.id}`} className="hover:text-brand">{p.full_name}</Link>{p.id === me.id && <span className="ml-2 text-xs text-ink-muted">(Anda)</span>}</p>
-          <p className="text-xs text-ink-muted">{p.phone ?? "Tanpa telepon"} | {p.is_active ? "Aktif" : "Nonaktif"}</p>
+          <p className="text-xs text-ink-muted">{authInfo.get(p.id)?.email ?? "Email tidak tersedia"} | {p.phone ?? "Tanpa telepon"} | {p.is_active ? "Aktif" : "Nonaktif"}</p>
+          {authInfo.size > 0 && <p className="text-xs text-ink-muted">{authInfo.get(p.id)?.lastSignIn ? `Terakhir masuk ${formatTanggal(authInfo.get(p.id)!.lastSignIn!, "d MMM yyyy, HH:mm")}` : <span className="font-medium text-[#8a5a0e]">Belum pernah masuk{authInfo.get(p.id)?.createdAt ? ` (dibuat ${formatTanggal(authInfo.get(p.id)!.createdAt!, "d MMM yyyy")})` : ""}</span>}</p>}
           {detail(p)}
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -163,6 +179,7 @@ export default async function UsersPage({ searchParams }: { searchParams: Promis
           {canManage && (p.is_active
             ? <ConfirmAction label="Nonaktifkan" title={`Nonaktifkan ${p.full_name}?`} description={p.group === "teacher" ? "Pengguna tidak dapat masuk. Kelas yang ia pegang dikosongkan otomatis dan perlu wali pengganti. Riwayat tetap tersimpan." : "Pengguna tidak dapat masuk dan tidak melihat data apa pun. Riwayat tetap tersimpan."} confirmLabel="Nonaktifkan" danger run={setUserActiveAction.bind(null, p.id, false)} />
             : <ConfirmAction label="Aktifkan" title={`Aktifkan ${p.full_name}?`} description="Pengguna dapat masuk sesuai perannya. Wali kelas yang dikosongkan sebelumnya tidak dipulihkan otomatis." confirmLabel="Aktifkan" run={setUserActiveAction.bind(null, p.id, true)} />)}
+          {isSuper && p.id !== me.id && !p.roles.includes("super_admin") && <DeleteAccountsDialog ids={[p.id]} subject={`akun ${p.full_name}`} buttonLabel="Hapus akun" />}
         </div>
       </li>
     );
@@ -180,6 +197,7 @@ export default async function UsersPage({ searchParams }: { searchParams: Promis
         <div role="note" className="mb-4 rounded-lg border border-warning/30 bg-warning/10 px-4 py-3 text-sm text-[#8a5a0e]">
           <p className="font-medium">Perlu perhatian</p>
           <ul className="mt-1 list-disc space-y-0.5 pl-5">{attention.map((a, i) => <li key={i}>{a.text}{a.href && <> <Link href={a.href} className="font-medium underline">Buka</Link></>}</li>)}</ul>
+          {isSuper && stale.length > 0 && <div className="mt-3"><DeleteAccountsDialog ids={stale.map((p) => p.id)} subject={`${stale.length} akun yang belum pernah masuk`} buttonLabel={`Bersihkan ${stale.length} akun tidak terpakai`} size="md" /></div>}
         </div>
       )}
 
@@ -200,6 +218,9 @@ export default async function UsersPage({ searchParams }: { searchParams: Promis
             <FilterField label="Cari nama atau telepon" htmlFor="q" grow><Input id="q" name="q" defaultValue={q} placeholder="Nama pengguna" /></FilterField>
             <FilterField label="Status" htmlFor="status">
               <Select id="status" name="status" defaultValue={status}><option value="">Semua</option><option value="aktif">Aktif</option><option value="nonaktif">Nonaktif</option></Select>
+            </FilterField>
+            <FilterField label="Riwayat masuk" htmlFor="login">
+              <Select id="login" name="login" defaultValue={loginFilter}><option value="">Semua</option><option value="belum">Belum pernah masuk</option></Select>
             </FilterField>
           </FilterBar></div>
           {year && <p className="text-xs text-ink-muted">Informasi kelas dan anak ditampilkan untuk tahun ajaran <span className="font-medium text-ink">{year.name}</span>{year.is_active ? " (aktif)" : ""}.</p>}
