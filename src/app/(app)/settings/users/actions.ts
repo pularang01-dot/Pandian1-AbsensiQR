@@ -217,3 +217,14 @@ export async function deleteAccountsAction(ids: string[], confirm: string): Prom
   revalidatePath("/settings/users");
   return { ok: true, deleted, blocked, message: `${deleted} akun dihapus permanen.` };
 }
+
+// ------------------------------------------------------------------ Orang tua tanpa anak aktif
+export async function deactivateOrphanParentsAction(): Promise<ActionState> {
+  await requireRole(ADMIN_ROLES);
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("deactivate_orphan_parents", { p_dry: false });
+  if (error) return { ok: false, message: friendlyDbError(error) };
+  const n = Number((data as { count?: number } | null)?.count ?? 0);
+  revalidatePath("/settings/users");
+  return { ok: true, message: n > 0 ? `${n} akun orang tua dinonaktifkan. Riwayat tetap tersimpan dan akun dapat diaktifkan kembali.` : "Tidak ada akun yang perlu dinonaktifkan." };
+}

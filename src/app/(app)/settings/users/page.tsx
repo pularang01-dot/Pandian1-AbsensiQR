@@ -13,7 +13,7 @@ import { loadAuthInfo } from "@/lib/users/auth-info";
 import { formatTanggal } from "@/lib/utils";
 import { asUuid, loadYears, pickYear } from "@/lib/data/lookups";
 import { one, openClassName, type AssignmentEmbed } from "@/lib/data/students";
-import { createUserAction, resendInviteAction, setUserActiveAction } from "./actions";
+import { createUserAction, deactivateOrphanParentsAction, resendInviteAction, setUserActiveAction } from "./actions";
 
 export const metadata: Metadata = { title: "Pengguna" };
 export const dynamic = "force-dynamic";
@@ -49,6 +49,8 @@ export default async function UsersPage({ searchParams }: { searchParams: Promis
   const loginFilter = sp.login === "belum" ? "belum" : "";
 
   const authInfo = await loadAuthInfo();
+  const orphanRes = await supabase.rpc("deactivate_orphan_parents", { p_dry: true });
+  const orphanCount = Number((orphanRes.data as { count?: number } | null)?.count ?? 0);
   const [{ data: profiles }, { data: roles }, { data: studs }, classesRes, parentsRes, linksRes, asgRes, totalsRes] = await Promise.all([
     supabase.from("profiles").select("id, full_name, phone, is_active").order("full_name").limit(1000),
     supabase.from("user_roles").select("user_id, role"),
@@ -103,6 +105,7 @@ export default async function UsersPage({ searchParams }: { searchParams: Promis
   if (heldByInactive.length) attention.push({ text: `${heldByInactive.length} akun nonaktif masih tercatat sebagai wali kelas. Tetapkan penggantinya.`, href: "/classes" });
   const parentsNoChild = all.filter((p) => p.group === "parent" && p.is_active && !(linksByParent.get(parentByProfile.get(p.id) ?? "") ?? []).some((l) => l.is_active));
   if (parentsNoChild.length) attention.push({ text: `${parentsNoChild.length} akun orang tua aktif belum terhubung ke siswa mana pun (tidak melihat data apa pun).` });
+  if (orphanCount > 0) attention.push({ text: `${orphanCount} akun orang tua aktif yang semua anaknya sudah lulus, pindah, atau nonaktif. Akun ini tidak melihat data apa pun lagi.` });
   const noRole = all.filter((p) => p.group === "none" && p.is_active);
   if (noRole.length) attention.push({ text: `${noRole.length} akun aktif belum memiliki peran.`, href: "/settings/users?tab=tanpa-peran" });
 
@@ -197,6 +200,7 @@ export default async function UsersPage({ searchParams }: { searchParams: Promis
         <div role="note" className="mb-4 rounded-lg border border-warning/30 bg-warning/10 px-4 py-3 text-sm text-[#8a5a0e]">
           <p className="font-medium">Perlu perhatian</p>
           <ul className="mt-1 list-disc space-y-0.5 pl-5">{attention.map((a, i) => <li key={i}>{a.text}{a.href && <> <Link href={a.href} className="font-medium underline">Buka</Link></>}</li>)}</ul>
+          {orphanCount > 0 && <div className="mt-3"><ConfirmAction label={`Nonaktifkan ${orphanCount} akun orang tua`} title="Nonaktifkan akun orang tua tanpa anak aktif?" description="Akun orang tua yang semua anaknya sudah lulus, pindah, atau nonaktif tidak dapat masuk lagi. Riwayat tetap tersimpan dan akun dapat diaktifkan kembali." confirmLabel="Nonaktifkan" run={deactivateOrphanParentsAction} /></div>}
           {isSuper && stale.length > 0 && <div className="mt-3"><DeleteAccountsDialog ids={stale.map((p) => p.id)} subject={`${stale.length} akun yang belum pernah masuk`} buttonLabel={`Bersihkan ${stale.length} akun tidak terpakai`} size="md" /></div>}
         </div>
       )}

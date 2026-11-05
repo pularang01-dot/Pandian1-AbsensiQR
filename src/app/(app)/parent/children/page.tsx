@@ -16,7 +16,7 @@ export default async function ChildrenPage() {
     <>
       <PageHeader title="Anak saya" description="Hanya siswa yang dihubungkan oleh sekolah dengan akun Anda yang ditampilkan." />
       {children.length === 0 ? (
-        <div className="card"><EmptyState title="Belum ada anak terhubung" description="Hubungi administrator sekolah untuk menghubungkan akun Anda." /></div>
+        <div className="card"><EmptyState title="Tidak ada anak aktif" description="Belum ada anak yang terhubung, atau anak Anda sudah lulus atau pindah sehingga aksesnya ditutup otomatis. Hubungi administrator sekolah bila ini tidak sesuai." /></div>
       ) : (
         <div className="grid gap-4 sm:grid-cols-2">
           {children.map((c) => (
