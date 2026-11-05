@@ -54,7 +54,7 @@ export default async function ClassesPage({ searchParams }: { searchParams: Prom
       <PageHeader
         title="Kelas"
         description="Kelola kelas, wali kelas, dan penempatan siswa per tahun ajaran."
-        actions={isAdmin && year ? <ClassFormButton values={{ academic_year_id: year.id }} years={years.filter((y) => !y.is_archived).map((y) => ({ id: y.id, name: y.name }))} teachers={teachers} /> : undefined}
+        actions={isAdmin && year ? <><Link href="/classes/promotion" className="inline-flex h-11 items-center gap-2 rounded-lg border border-line bg-surface px-4 text-sm font-medium hover:bg-canvas">Kenaikan kelas</Link><ClassFormButton values={{ academic_year_id: year.id }} years={years.filter((y) => !y.is_archived).map((y) => ({ id: y.id, name: y.name }))} teachers={teachers} /></> : undefined}
       />
       {needsTeacher.length > 0 && (
         <div role="note" className="mb-4 rounded-lg border border-warning/30 bg-warning/10 px-4 py-3 text-sm text-[#8a5a0e]">

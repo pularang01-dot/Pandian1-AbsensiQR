@@ -70,7 +70,10 @@ export async function setStudentStatusAction(studentId: string, status: string):
   if (error) return { ok: false, message: friendlyDbError(error) };
   revalidatePath(`/students/${studentId}`);
   revalidatePath("/students");
-  return { ok: true, message: "Status siswa diperbarui. Riwayat absensi tetap tersimpan." };
+  const message = status === "active"
+    ? "Siswa diaktifkan kembali. Tempatkan siswa ke kelas dan terbitkan QR baru karena penempatan lama dan QR lama sudah ditutup."
+    : "Status siswa diperbarui. Penempatan kelas ditutup, QR dicabut, dan riwayat absensi tetap tersimpan. Akun orang tua terkait kehilangan akses ke siswa ini.";
+  return { ok: true, message };
 }
 
 export async function regenerateQrAction(studentId: string): Promise<ActionState> {
