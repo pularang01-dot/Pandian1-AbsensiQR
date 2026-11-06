@@ -21,6 +21,22 @@ Pendaftaran mandiri Supabase harus nonaktif. Callback `/auth/callback` menolak d
 - Header keamanan di next.config.mjs; kamera hanya untuk origin sendiri (pemindai).
 - Pencarian disanitasi untuk filter PostgREST. Pesan galat basis data diterjemahkan tanpa membocorkan detail internal.
 
+## Penghapusan data siswa
+
+Hapus permanen hanya oleh administrator, dengan pratinjau, peringatan, dan konfirmasi ketik HAPUS. Siswa yang memiliki riwayat absensi, izin, dispensasi, atau pulang awal dilindungi basis data dan tidak dapat dihapus; arsipkan lewat status. Setiap penghapusan tercatat di audit log (salinan baris siswa disimpan di log audit). Cadangan basis data tetap memuat data lama sesuai kebijakan cadangan Supabase.
+
+## Siswa lulus dan akun orang tua
+
+Orang tua hanya dapat melihat anak berstatus Aktif; saat anak lulus, pindah, atau nonaktif akses ditutup otomatis oleh basis data (`is_parent_of`). Kelulusan kelas (`graduate_students`) mengarsipkan siswa tanpa menghapus riwayat, mencabut QR, dan opsional menonaktifkan akun orang tua yang tidak punya anak aktif lain. Tentukan masa simpan arsip siswa lulus sesuai kebijakan sekolah.
+
+## Penonaktifan akun otomatis
+
+Harian (pg_cron) dan manual. Hanya menonaktifkan, tidak menghapus. Akun admin, kepala sekolah, Super Admin, dan wali kelas aktif dikecualikan. Setiap proses masuk audit log dan memberi notifikasi admin. Aturan dan masa tunggu diatur di Pengaturan > Kebersihan akun.
+
+## Penghapusan akun
+
+Hanya Super Admin. Akun hanya dapat dihapus permanen bila tidak punya jejak (belum pernah mencatat, meninjau, mengunggah, menjadi wali kelas, atau memberi peran); pemeriksaan dilakukan di server lewat `account_footprint` dan diulang saat menghapus. Akun Super Admin dan akun sendiri tidak dapat dihapus. Akun berjejak cukup dinonaktifkan. Kendali pendaftaran: matikan pendaftaran mandiri di Supabase Auth, buat akun hanya lewat Pengaturan > Pengguna, dan tinjau akun yang belum pernah masuk (tampil pada Perlu perhatian).
+
 ## Privasi
 
 - Data anak adalah data sensitif. Kumpulkan seperlunya: tidak menyimpan diagnosis medis, nomor identitas penjemput, atau dokumen identitas.
@@ -35,3 +51,6 @@ Aktifkan MFA untuk akun admin di Supabase dan akun pemilik proyek. Aktifkan back
 ## Batasan yang diketahui
 
 Belum ada pembatasan laju (rate limit) tingkat aplikasi selain bawaan Supabase Auth. Belum ada penilaian keamanan pihak ketiga atau uji penetrasi.
+
+## Pencadangan dan pemulihan
+Cadangan hanya dibuat super admin lewat rute server, dienkripsi AES-256-GCM dengan kata sandi yang tidak disimpan, dan tercatat di jejak audit. Pemulihan hanya lewat skrip pemilik memakai kunci service-role di komputer pemilik. Mode pemulihan (migrasi 017) hanya dapat dinyalakan service-role, tertutup dari pengguna, dan kedaluwarsa otomatis 3 jam. Lihat docs/BACKUP_RESTORE_SOP.md.

@@ -342,3 +342,293 @@ do $$ declare y2 uuid := gen_random_uuid(); begin
   perform public.expect_fail('operator tak bisa mengubah tahun ajaran', format($q$ select public.activate_academic_year(%L) $q$, y2));
 end $$;
 reset role;
+
+-- ---------------------------------------------------------------- token QR tanpa pgcrypto di search_path (009)
+do $$ declare t1 text; t2 text; begin
+  perform public.test_as('00000000-0000-0000-0000-000000000001');
+  t1 := public.regenerate_qr_token('50000000-0000-0000-0000-00000000000a');
+  t2 := public.regenerate_qr_token('50000000-0000-0000-0000-00000000000a');
+  perform public.check_('token QR 48 karakter heksa', t1 ~ '^[0-9a-f]{48}$');
+  perform public.check_('token QR baru berbeda dari sebelumnya', t1 <> t2);
+  perform public.check_('hanya satu token aktif per siswa setelah terbit ulang', (select count(*) from public.student_qr_tokens where student_id='50000000-0000-0000-0000-00000000000a' and is_active) = 1);
+end $$;
+reset role;
+
+-- ---------------------------------------------------------------- wali kelas (010)
+do $$ declare n int; begin
+  perform public.check_('riwayat wali terisi dari kelas yang punya wali', (select count(*) from public.class_homeroom_history where class_id='c1000000-0000-0000-0000-000000000001' and ended_at is null) = 1);
+  perform public.test_as('00000000-0000-0000-0000-000000000002');
+  perform public.expect_fail('operator tak bisa memindahkan wali', $q$ select public.move_homeroom_teacher('c1000000-0000-0000-0000-000000000001','c1000000-0000-0000-0000-000000000002') $q$);
+  perform public.test_as('00000000-0000-0000-0000-000000000001');
+  perform public.move_homeroom_teacher('c1000000-0000-0000-0000-000000000001','c1000000-0000-0000-0000-000000000002');
+  perform public.check_('wali pindah ke kelas tujuan', (select homeroom_teacher_id from public.classes where id='c1000000-0000-0000-0000-000000000002') = '00000000-0000-0000-0000-000000000005');
+  perform public.check_('kelas asal kosong setelah pindah ke kelas kosong', (select homeroom_teacher_id is null from public.classes where id='c1000000-0000-0000-0000-000000000001'));
+  perform public.check_('riwayat: kelas asal ditutup dengan alasan dipindahkan', (select end_reason from public.class_homeroom_history where class_id='c1000000-0000-0000-0000-000000000001' and ended_at is not null order by ended_at desc limit 1) = 'dipindahkan');
+  perform public.check_('riwayat: kelas tujuan punya satu wali terbuka', (select count(*) from public.class_homeroom_history where class_id='c1000000-0000-0000-0000-000000000002' and ended_at is null) = 1);
+  perform public.expect_fail('pindah tanpa wali di kelas asal ditolak', $q$ select public.move_homeroom_teacher('c1000000-0000-0000-0000-000000000001','c1000000-0000-0000-0000-000000000002') $q$);
+  perform public.test_as('00000000-0000-0000-0000-000000000005');
+  perform public.expect_zero_rows('guru tak bisa membaca riwayat wali', $q$ select 1 from public.class_homeroom_history $q$);
+end $$;
+reset role;
+do $$ declare n int; begin
+  n := public.clear_homeroom_for_user('00000000-0000-0000-0000-000000000005', 'akun dinonaktifkan');
+  perform public.check_('kosongkan wali saat akun nonaktif', n = 1 and (select count(*) from public.classes where homeroom_teacher_id is not null) = 0);
+  perform public.check_('riwayat mencatat alasan akun dinonaktifkan', exists (select 1 from public.class_homeroom_history where end_reason = 'akun dinonaktifkan'));
+end $$;
+
+-- ---------------------------------------------------------------- rekonsiliasi per kelas (011)
+update public.classes set homeroom_teacher_id = '00000000-0000-0000-0000-000000000005' where id = 'c1000000-0000-0000-0000-000000000001';
+do $$ declare n int; d date := date '2026-11-03'; begin
+  perform public.test_as('00000000-0000-0000-0000-000000000005');
+  perform public.expect_fail('wali kelas tak bisa rekonsiliasi seluruh sekolah', format($q$ select public.reconcile_attendance(%L) $q$, d));
+  perform public.expect_fail('wali kelas tak bisa rekonsiliasi kelas lain', format($q$ select public.reconcile_attendance(%L, 'c1000000-0000-0000-0000-000000000002') $q$, d));
+  perform public.test_as('00000000-0000-0000-0000-000000000002');
+  perform public.expect_fail('operator tak bisa rekonsiliasi', format($q$ select public.reconcile_attendance(%L, 'c1000000-0000-0000-0000-000000000001') $q$, d));
+  perform public.test_as('00000000-0000-0000-0000-000000000005');
+  begin
+    n := public.reconcile_attendance(d, 'c1000000-0000-0000-0000-000000000001');
+    perform public.check_('wali kelas merekonsiliasi kelasnya sendiri', n >= 1);
+    perform public.check_('siswa kelas lain tidak tersentuh', not exists (select 1 from public.attendance_records r join public.attendance_sessions s on s.id=r.session_id where s.session_date=d and r.class_id is distinct from 'c1000000-0000-0000-0000-000000000001'));
+    perform public.check_('rekonsiliasi wali tidak menutup sesi', (select status from public.attendance_sessions where session_date=d) <> 'closed');
+  exception when others then raise notice 'FAIL rekonsiliasi kelas: %', sqlerrm; end;
+end $$;
+reset role;
+
+-- ---------------------------------------------------------------- hapus siswa (012)
+insert into public.students(id,nis,full_name,is_demo) values ('50000000-0000-0000-0000-0000000000d1','9001','Siswa Hapus Uji',true);
+insert into public.student_qr_tokens(student_id, token) values ('50000000-0000-0000-0000-0000000000d1', public.new_qr_token());
+do $$ declare r jsonb; begin
+  perform public.test_as('00000000-0000-0000-0000-000000000005');
+  perform public.expect_fail('guru tak bisa menghapus siswa', $q$ select public.delete_students(array['50000000-0000-0000-0000-0000000000d1']::uuid[], 'HAPUS') $q$);
+  perform public.test_as('00000000-0000-0000-0000-000000000002');
+  perform public.expect_fail('operator tak bisa menghapus siswa', $q$ select public.delete_students(array['50000000-0000-0000-0000-0000000000d1']::uuid[], 'HAPUS') $q$);
+  perform public.test_as('00000000-0000-0000-0000-000000000001');
+  perform public.expect_fail('hapus tanpa kata konfirmasi ditolak', $q$ select public.delete_students(array['50000000-0000-0000-0000-0000000000d1']::uuid[], 'hapus') $q$);
+  r := public.delete_students(array['50000000-0000-0000-0000-0000000000d1','50000000-0000-0000-0000-00000000000a']::uuid[], '', true);
+  perform public.check_('pratinjau tidak menghapus apa pun', (r->>'deletable')::int = 1 and exists (select 1 from public.students where id='50000000-0000-0000-0000-0000000000d1'));
+  r := public.delete_students(array['50000000-0000-0000-0000-0000000000d1','50000000-0000-0000-0000-00000000000a']::uuid[], 'HAPUS');
+  perform public.check_('siswa tanpa riwayat terhapus', (r->>'deleted')::int = 1 and not exists (select 1 from public.students where id='50000000-0000-0000-0000-0000000000d1'));
+  perform public.check_('siswa dengan riwayat dilindungi', jsonb_array_length(r->'skipped') = 1 and exists (select 1 from public.students where id='50000000-0000-0000-0000-00000000000a'));
+  perform public.check_('token QR ikut terhapus', not exists (select 1 from public.student_qr_tokens where student_id='50000000-0000-0000-0000-0000000000d1'));
+  perform public.check_('penghapusan tercatat di audit log', exists (select 1 from public.audit_logs where action='delete_students'));
+end $$;
+reset role;
+
+-- ---------------------------------------------------------------- jejak akun (013)
+do $$ begin
+  perform public.check_('akun baru tanpa aktivitas tidak punya jejak', public.account_footprint('00000000-0000-0000-0000-000000000007') = '{}'::jsonb);
+  perform public.check_('akun yang pernah mencatat/meninjau punya jejak', public.account_footprint('00000000-0000-0000-0000-000000000001') <> '{}'::jsonb);
+  perform public.check_('mantan wali kelas punya jejak (riwayat wali)', public.account_footprint('00000000-0000-0000-0000-000000000005') ? 'class_homeroom_history.teacher_id');
+end $$;
+do $$ declare ok boolean; begin
+  perform public.test_as('00000000-0000-0000-0000-000000000001');
+  begin perform public.account_footprint('00000000-0000-0000-0000-000000000007'); raise notice 'FAIL jejak akun terbuka untuk klien';
+  exception when others then raise notice 'PASS jejak akun tidak dapat dipanggil dari klien'; end;
+end $$;
+reset role;
+
+-- ---------------------------------------------------------------- kelulusan (014)
+insert into auth.users(id,email) values
+ ('00000000-0000-0000-0000-0000000000a1','pg1@x'),('00000000-0000-0000-0000-0000000000a2','pg2@x');
+update public.profiles set is_active = true where id in ('00000000-0000-0000-0000-0000000000a1','00000000-0000-0000-0000-0000000000a2');
+insert into public.user_roles(user_id, role) values ('00000000-0000-0000-0000-0000000000a1','parent'),('00000000-0000-0000-0000-0000000000a2','parent');
+insert into public.parents(id, profile_id) values ('b0000000-0000-0000-0000-0000000000a1','00000000-0000-0000-0000-0000000000a1'),('b0000000-0000-0000-0000-0000000000a2','00000000-0000-0000-0000-0000000000a2');
+insert into public.classes(id,academic_year_id,name,grade_level) values ('c1000000-0000-0000-0000-0000000000f6','a1000000-0000-0000-0000-000000000000','6Z',6);
+insert into public.students(id,nis,full_name,is_demo) values
+ ('50000000-0000-0000-0000-0000000000e1','9101','Lulus Satu',true),('50000000-0000-0000-0000-0000000000e2','9102','Lulus Dua',true),('50000000-0000-0000-0000-0000000000e3','9103','Adik Kelas Satu',true);
+insert into public.student_class_assignments(student_id,class_id,academic_year_id) values
+ ('50000000-0000-0000-0000-0000000000e1','c1000000-0000-0000-0000-0000000000f6','a1000000-0000-0000-0000-000000000000'),
+ ('50000000-0000-0000-0000-0000000000e2','c1000000-0000-0000-0000-0000000000f6','a1000000-0000-0000-0000-000000000000'),
+ ('50000000-0000-0000-0000-0000000000e3','c1000000-0000-0000-0000-000000000002','a1000000-0000-0000-0000-000000000000');
+insert into public.student_qr_tokens(student_id, token) values ('50000000-0000-0000-0000-0000000000e1', public.new_qr_token());
+-- a1 hanya punya anak e1; a2 punya e2 (lulus) dan e3 (adik, masih aktif)
+insert into public.parent_student_links(parent_id, student_id, relationship) values
+ ('b0000000-0000-0000-0000-0000000000a1','50000000-0000-0000-0000-0000000000e1','ibu'),
+ ('b0000000-0000-0000-0000-0000000000a2','50000000-0000-0000-0000-0000000000e2','ayah'),
+ ('b0000000-0000-0000-0000-0000000000a2','50000000-0000-0000-0000-0000000000e3','ayah');
+do $$ declare r jsonb; begin
+  perform public.test_as('00000000-0000-0000-0000-0000000000a1');
+  perform public.check_('orang tua melihat anak yang aktif', (select count(*) from public.students where id='50000000-0000-0000-0000-0000000000e1') = 1);
+  perform public.test_as('00000000-0000-0000-0000-000000000005');
+  perform public.expect_fail('guru tak bisa meluluskan kelas', $q$ select public.graduate_students('c1000000-0000-0000-0000-0000000000f6') $q$);
+  perform public.test_as('00000000-0000-0000-0000-000000000001');
+  r := public.graduate_students('c1000000-0000-0000-0000-0000000000f6', true, true);
+  perform public.check_('pratinjau kelulusan menghitung dampak tanpa mengubah', (r->>'students')::int = 2 and (r->>'parents_to_deactivate')::int = 1 and (select status from public.students where id='50000000-0000-0000-0000-0000000000e1') = 'active');
+  r := public.graduate_students('c1000000-0000-0000-0000-0000000000f6', true, false);
+  perform public.check_('siswa kelas diluluskan', (select count(*) from public.students where status='graduated' and id in ('50000000-0000-0000-0000-0000000000e1','50000000-0000-0000-0000-0000000000e2')) = 2);
+  perform public.check_('penempatan kelas ditutup', (select count(*) from public.student_class_assignments where class_id='c1000000-0000-0000-0000-0000000000f6' and end_date is null) = 0);
+  perform public.check_('QR siswa lulus dicabut', not exists (select 1 from public.student_qr_tokens where student_id='50000000-0000-0000-0000-0000000000e1' and is_active));
+  perform public.check_('orang tua tanpa anak aktif dinonaktifkan', not (select is_active from public.profiles where id='00000000-0000-0000-0000-0000000000a1'));
+  perform public.check_('orang tua yang masih punya anak aktif tetap aktif', (select is_active from public.profiles where id='00000000-0000-0000-0000-0000000000a2'));
+  perform public.expect_fail('kelas tanpa siswa aktif ditolak', $q$ select public.graduate_students('c1000000-0000-0000-0000-0000000000f6') $q$);
+  perform public.test_as('00000000-0000-0000-0000-0000000000a2');
+  perform public.check_('orang tua tak lagi melihat anak yang lulus', (select count(*) from public.students where id='50000000-0000-0000-0000-0000000000e2') = 0);
+  perform public.check_('orang tua tetap melihat anak yang masih aktif', (select count(*) from public.students where id='50000000-0000-0000-0000-0000000000e3') = 1);
+end $$;
+reset role;
+-- pembersihan orang tua yatim secara terpisah
+update public.students set status = 'transferred' where id = '50000000-0000-0000-0000-0000000000e3';
+do $$ declare r jsonb; begin
+  perform public.test_as('00000000-0000-0000-0000-000000000001');
+  r := public.deactivate_orphan_parents(true);
+  perform public.check_('pratinjau pembersihan orang tua tidak mengubah data', (r->>'count')::int = 1 and (select is_active from public.profiles where id='00000000-0000-0000-0000-0000000000a2'));
+  r := public.deactivate_orphan_parents(false);
+  perform public.check_('akun orang tua tanpa anak aktif dinonaktifkan', not (select is_active from public.profiles where id='00000000-0000-0000-0000-0000000000a2'));
+  perform public.test_as('00000000-0000-0000-0000-000000000002');
+  perform public.expect_fail('operator tak bisa menonaktifkan orang tua', $q$ select public.deactivate_orphan_parents(false) $q$);
+end $$;
+reset role;
+
+-- ---------------------------------------------------------------- kenaikan kelas (015)
+insert into public.academic_years(id,name,start_date,end_date) values ('a2000000-0000-0000-0000-000000000000','2100/2101','2100-07-01','2101-06-30') on conflict do nothing;
+insert into public.classes(id,academic_year_id,name,grade_level) values
+ ('c5000000-0000-0000-0000-000000000005','a1000000-0000-0000-0000-000000000000','S5',5),
+ ('c5000000-0000-0000-0000-000000000006','a1000000-0000-0000-0000-000000000000','S6',6),
+ ('c5000000-0000-0000-0000-000000000004','a1000000-0000-0000-0000-000000000000','S4',4),
+ ('c6000000-0000-0000-0000-000000000006','a2000000-0000-0000-0000-000000000000','T6',6),
+ ('c6000000-0000-0000-0000-000000000005','a2000000-0000-0000-0000-000000000000','T5',5),
+ ('c6000000-0000-0000-0000-000000000003','a2000000-0000-0000-0000-000000000000','T3',3);
+insert into public.students(id,nis,full_name,is_demo) values
+ ('50000000-0000-0000-0000-0000000000f1','9201','Naik Satu',true),('50000000-0000-0000-0000-0000000000f2','9202','Tinggal Dua',true),
+ ('50000000-0000-0000-0000-0000000000f3','9203','Pindah Tiga',true),('50000000-0000-0000-0000-0000000000f4','9204','Kelas Lain Empat',true),
+ ('50000000-0000-0000-0000-0000000000f5','9205','Lulus Lima',true),('50000000-0000-0000-0000-0000000000f6','9206','Tak Lulus Enam',true),
+ ('50000000-0000-0000-0000-0000000000f7','9207','Tidak Diproses Tujuh',true);
+insert into public.student_class_assignments(student_id,class_id,academic_year_id) values
+ ('50000000-0000-0000-0000-0000000000f1','c5000000-0000-0000-0000-000000000005','a1000000-0000-0000-0000-000000000000'),
+ ('50000000-0000-0000-0000-0000000000f2','c5000000-0000-0000-0000-000000000005','a1000000-0000-0000-0000-000000000000'),
+ ('50000000-0000-0000-0000-0000000000f3','c5000000-0000-0000-0000-000000000005','a1000000-0000-0000-0000-000000000000'),
+ ('50000000-0000-0000-0000-0000000000f4','c5000000-0000-0000-0000-000000000005','a1000000-0000-0000-0000-000000000000'),
+ ('50000000-0000-0000-0000-0000000000f5','c5000000-0000-0000-0000-000000000006','a1000000-0000-0000-0000-000000000000'),
+ ('50000000-0000-0000-0000-0000000000f6','c5000000-0000-0000-0000-000000000006','a1000000-0000-0000-0000-000000000000'),
+ ('50000000-0000-0000-0000-0000000000f7','c5000000-0000-0000-0000-000000000004','a1000000-0000-0000-0000-000000000000');
+insert into public.student_qr_tokens(student_id, token) values ('50000000-0000-0000-0000-0000000000f3', public.new_qr_token());
+insert into auth.users(id,email) values ('00000000-0000-0000-0000-0000000000b1','pk@x');
+update public.profiles set is_active = true where id = '00000000-0000-0000-0000-0000000000b1';
+insert into public.user_roles(user_id, role) values ('00000000-0000-0000-0000-0000000000b1','parent');
+insert into public.parents(id, profile_id) values ('b0000000-0000-0000-0000-0000000000b1','00000000-0000-0000-0000-0000000000b1');
+insert into public.parent_student_links(parent_id, student_id, relationship) values ('b0000000-0000-0000-0000-0000000000b1','50000000-0000-0000-0000-0000000000f3','ibu');
+do $$ declare r jsonb; map jsonb; ex jsonb; begin
+  map := jsonb_build_object('c5000000-0000-0000-0000-000000000005','c6000000-0000-0000-0000-000000000006','c5000000-0000-0000-0000-000000000006','graduate');
+  ex := jsonb_build_array(
+    jsonb_build_object('student_id','50000000-0000-0000-0000-0000000000f2','action','repeat','class_id','c6000000-0000-0000-0000-000000000005'),
+    jsonb_build_object('student_id','50000000-0000-0000-0000-0000000000f3','action','transfer'),
+    jsonb_build_object('student_id','50000000-0000-0000-0000-0000000000f4','action','other','class_id','c6000000-0000-0000-0000-000000000006'),
+    jsonb_build_object('student_id','50000000-0000-0000-0000-0000000000f6','action','repeat','class_id','c6000000-0000-0000-0000-000000000006'));
+  -- 'f1' naik default ke T6 (kelas tingkat 6) dari tingkat 5: valid.
+  perform public.test_as('00000000-0000-0000-0000-000000000005');
+  perform public.expect_fail('guru tak bisa memproses kenaikan kelas', format($q$ select public.promote_students('a1000000-0000-0000-0000-000000000000','a2000000-0000-0000-0000-000000000000',%L::jsonb) $q$, map::text));
+  perform public.test_as('00000000-0000-0000-0000-000000000001');
+  perform public.expect_fail('tahun tujuan harus lebih baru', format($q$ select public.promote_students('a2000000-0000-0000-0000-000000000000','a1000000-0000-0000-0000-000000000000',%L::jsonb) $q$, map::text));
+  -- galat: tidak naik kelas ke tingkat berbeda
+  r := public.promote_students('a1000000-0000-0000-0000-000000000000','a2000000-0000-0000-0000-000000000000', map,
+         jsonb_build_array(jsonb_build_object('student_id','50000000-0000-0000-0000-0000000000f2','action','repeat','class_id','c6000000-0000-0000-0000-000000000003')), true, true);
+  perform public.check_('pemeriksaan menolak tidak-naik-kelas ke tingkat berbeda', jsonb_array_length(r->'errors') >= 1);
+  perform public.expect_fail('rencana tidak valid tidak ditulis', format($q$ select public.promote_students('a1000000-0000-0000-0000-000000000000','a2000000-0000-0000-0000-000000000000',%L::jsonb,%L::jsonb,true,false) $q$, map::text,
+         jsonb_build_array(jsonb_build_object('student_id','50000000-0000-0000-0000-0000000000f2','action','repeat','class_id','c6000000-0000-0000-0000-000000000003'))::text));
+  perform public.check_('rencana tidak valid tidak mengubah apa pun', (select count(*) from public.student_class_assignments where academic_year_id='a2000000-0000-0000-0000-000000000000') = 0);
+  -- pratinjau valid
+  r := public.promote_students('a1000000-0000-0000-0000-000000000000','a2000000-0000-0000-0000-000000000000', map, ex, true, true);
+  perform public.check_('pratinjau kenaikan: hitungan benar', (r->>'promoted')::int = 1 and (r->>'repeated')::int = 2 and (r->>'transferred')::int = 1 and (r->>'other_class')::int = 1 and (r->>'graduated')::int = 1 and jsonb_array_length(r->'errors') = 0);
+  perform public.check_('pratinjau tidak mengubah data', (select count(*) from public.student_class_assignments where academic_year_id='a2000000-0000-0000-0000-000000000000') = 0 and (select status from public.students where id='50000000-0000-0000-0000-0000000000f3') = 'active');
+  perform public.check_('pratinjau menghitung orang tua yang akan dinonaktifkan', (r->>'parents_to_deactivate')::int = 1);
+  -- eksekusi
+  r := public.promote_students('a1000000-0000-0000-0000-000000000000','a2000000-0000-0000-0000-000000000000', map, ex, true, false);
+  perform public.check_('siswa naik kelas ditempatkan di kelas tujuan', exists (select 1 from public.student_class_assignments where student_id='50000000-0000-0000-0000-0000000000f1' and class_id='c6000000-0000-0000-0000-000000000006' and end_date is null));
+  perform public.check_('penempatan lama ditutup, riwayat tetap ada', (select count(*) from public.student_class_assignments where student_id='50000000-0000-0000-0000-0000000000f1') = 2 and not exists (select 1 from public.student_class_assignments where student_id='50000000-0000-0000-0000-0000000000f1' and academic_year_id='a1000000-0000-0000-0000-000000000000' and end_date is null));
+  perform public.check_('tidak naik kelas ditempatkan di tingkat yang sama', exists (select 1 from public.student_class_assignments where student_id='50000000-0000-0000-0000-0000000000f2' and class_id='c6000000-0000-0000-0000-000000000005' and end_date is null));
+  perform public.check_('siswa pindah sekolah berstatus transferred tanpa kelas', (select status from public.students where id='50000000-0000-0000-0000-0000000000f3') = 'transferred' and not exists (select 1 from public.student_class_assignments where student_id='50000000-0000-0000-0000-0000000000f3' and end_date is null));
+  perform public.check_('QR siswa pindah dicabut', not exists (select 1 from public.student_qr_tokens where student_id='50000000-0000-0000-0000-0000000000f3' and is_active));
+  perform public.check_('siswa kelas lain ditempatkan sesuai pilihan', exists (select 1 from public.student_class_assignments where student_id='50000000-0000-0000-0000-0000000000f4' and class_id='c6000000-0000-0000-0000-000000000006' and end_date is null));
+  perform public.check_('siswa kelas 6 diluluskan, yang tak lulus tinggal kelas', (select status from public.students where id='50000000-0000-0000-0000-0000000000f5') = 'graduated' and exists (select 1 from public.student_class_assignments where student_id='50000000-0000-0000-0000-0000000000f6' and class_id='c6000000-0000-0000-0000-000000000006' and end_date is null));
+  perform public.check_('siswa di kelas yang tidak dipetakan tidak disentuh', exists (select 1 from public.student_class_assignments where student_id='50000000-0000-0000-0000-0000000000f7' and class_id='c5000000-0000-0000-0000-000000000004' and end_date is null));
+  perform public.check_('orang tua anak yang pindah dinonaktifkan', not (select is_active from public.profiles where id='00000000-0000-0000-0000-0000000000b1'));
+  -- jalankan ulang: tidak menggandakan
+  r := public.promote_students('a1000000-0000-0000-0000-000000000000','a2000000-0000-0000-0000-000000000000', map, '[]'::jsonb, true, false);
+  perform public.check_('menjalankan ulang tidak menggandakan penempatan', (select count(*) from public.student_class_assignments where student_id='50000000-0000-0000-0000-0000000000f1' and academic_year_id='a2000000-0000-0000-0000-000000000000') = 1);
+  perform public.check_('penempatan terbuka paling banyak satu per tahun', not exists (select 1 from public.student_class_assignments where end_date is null group by student_id, academic_year_id having count(*) > 1));
+end $$;
+reset role;
+-- pindah sekolah di tengah tahun lewat status: penempatan ditutup dan QR dicabut otomatis (trigger)
+do $$ begin
+  insert into public.student_qr_tokens(student_id, token) values ('50000000-0000-0000-0000-0000000000f7', public.new_qr_token());
+  update public.students set status = 'transferred' where id = '50000000-0000-0000-0000-0000000000f7';
+  perform public.check_('status keluar otomatis menutup penempatan', not exists (select 1 from public.student_class_assignments where student_id='50000000-0000-0000-0000-0000000000f7' and end_date is null));
+  perform public.check_('status keluar otomatis mencabut QR', not exists (select 1 from public.student_qr_tokens where student_id='50000000-0000-0000-0000-0000000000f7' and is_active));
+end $$;
+
+-- ---------------------------------------------------------------- penonaktifan terjadwal (016)
+insert into auth.users(id,email,created_at,last_sign_in_at) values
+ ('00000000-0000-0000-0000-0000000000c1','h1@x', now() - interval '90 days', now() - interval '3 days'),  -- orang tua yatim lama (pernah masuk)
+ ('00000000-0000-0000-0000-0000000000c2','h2@x', now() - interval '90 days', now() - interval '3 days'),  -- orang tua yatim baru (pernah masuk)
+ ('00000000-0000-0000-0000-0000000000c3','h3@x', now() - interval '90 days', null),  -- guru tak pernah masuk
+ ('00000000-0000-0000-0000-0000000000c4','h4@x', now() - interval '5 days', null),   -- baru dibuat
+ ('00000000-0000-0000-0000-0000000000c5','h5@x', now() - interval '90 days', null);  -- admin tak pernah masuk
+update public.profiles set is_active = true where id::text like '00000000-0000-0000-0000-0000000000c%';
+insert into public.user_roles(user_id, role) values
+ ('00000000-0000-0000-0000-0000000000c1','parent'),('00000000-0000-0000-0000-0000000000c2','parent'),
+ ('00000000-0000-0000-0000-0000000000c3','teacher'),('00000000-0000-0000-0000-0000000000c4','teacher'),('00000000-0000-0000-0000-0000000000c5','school_admin');
+insert into public.students(id,nis,full_name,status,is_demo) values
+ ('50000000-0000-0000-0000-0000000000c1','9301','Anak Lama','graduated',true),('50000000-0000-0000-0000-0000000000c2','9302','Anak Baru','transferred',true);
+alter table public.students disable trigger trg_students_updated;
+update public.students set updated_at = now() - interval '60 days' where id = '50000000-0000-0000-0000-0000000000c1';
+alter table public.students enable trigger trg_students_updated;
+insert into public.parents(id, profile_id) values ('b0000000-0000-0000-0000-0000000000c1','00000000-0000-0000-0000-0000000000c1'),('b0000000-0000-0000-0000-0000000000c2','00000000-0000-0000-0000-0000000000c2');
+insert into public.parent_student_links(parent_id, student_id, relationship) values
+ ('b0000000-0000-0000-0000-0000000000c1','50000000-0000-0000-0000-0000000000c1','ibu'),('b0000000-0000-0000-0000-0000000000c2','50000000-0000-0000-0000-0000000000c2','ibu');
+do $$ declare r jsonb; begin
+  perform public.test_as('00000000-0000-0000-0000-000000000005');
+  perform public.expect_fail('guru tak bisa menjalankan pembersihan akun', $q$ select public.run_account_hygiene_now(true) $q$);
+  perform public.test_as('00000000-0000-0000-0000-000000000001');
+  r := public.run_account_hygiene_now(true);
+  perform public.check_('pratinjau: orang tua yatim lewat masa tunggu terhitung, yang baru tidak', (r->>'orphan_parents')::int = 1 and (r->>'stale_accounts')::int = 0);
+  perform public.check_('pratinjau tidak mengubah akun', (select is_active from public.profiles where id='00000000-0000-0000-0000-0000000000c1'));
+end $$;
+reset role;
+update public.system_settings set value = '60'::jsonb where key = 'hygiene.stale_account_days';
+do $$ declare r jsonb; begin
+  r := public.account_hygiene_run(false);
+  perform public.check_('orang tua yatim lama dinonaktifkan', not (select is_active from public.profiles where id='00000000-0000-0000-0000-0000000000c1'));
+  perform public.check_('orang tua yatim baru dalam masa tunggu tetap aktif', (select is_active from public.profiles where id='00000000-0000-0000-0000-0000000000c2'));
+  perform public.check_('guru yang tak pernah masuk >60 hari dinonaktifkan', not (select is_active from public.profiles where id='00000000-0000-0000-0000-0000000000c3'));
+  perform public.check_('akun baru dibuat tetap aktif', (select is_active from public.profiles where id='00000000-0000-0000-0000-0000000000c4'));
+  perform public.check_('akun admin tak pernah masuk tidak disentuh', (select is_active from public.profiles where id='00000000-0000-0000-0000-0000000000c5'));
+  perform public.check_('proses tercatat di audit log', exists (select 1 from public.audit_logs where action='account_hygiene_run'));
+  perform public.check_('admin menerima notifikasi', exists (select 1 from public.notifications where type='account_hygiene'));
+  update public.system_settings set value = '0'::jsonb where key in ('hygiene.stale_account_days','hygiene.orphan_parent_days');
+  update public.profiles set is_active = true where id = '00000000-0000-0000-0000-0000000000c1';
+  r := public.account_hygiene_run(false);
+  perform public.check_('nilai 0 mematikan aturan', (r->>'orphan_parents')::int = 0 and (select is_active from public.profiles where id='00000000-0000-0000-0000-0000000000c1'));
+end $$;
+do $$ begin
+  perform public.test_as('00000000-0000-0000-0000-000000000001');
+  perform public.check_('status jadwal tidak error tanpa pg_cron', public.account_hygiene_schedule() is null);
+  perform public.test_as('00000000-0000-0000-0000-000000000005');
+  perform public.expect_fail('guru tak bisa membaca status jadwal', $q$ select public.account_hygiene_schedule() $q$);
+end $$;
+reset role;
+
+-- ============ 017: mode pemulihan ============
+reset role;
+do $$ begin
+  perform public.check_('mode pemulihan mati secara bawaan', not public.restoring());
+  perform public.test_as('00000000-0000-0000-0000-000000000001');
+  perform public.expect_fail('super admin tak bisa menyalakan mode pemulihan lewat SQL pengguna', $q$ select public.restore_begin() $q$);
+  perform public.expect_fail('pengguna tak bisa membaca restore_state', $q$ select * from public.restore_state $q$);
+end $$;
+reset role;
+do $$ declare n0 bigint; n1 bigint; ts0 timestamptz; begin
+  perform public.restore_begin();
+  perform public.check_('mode pemulihan menyala', public.restoring());
+  select count(*) into n0 from public.audit_logs;
+  insert into public.students(id,nis,full_name,status,is_demo) values ('50000000-0000-0000-0000-0000000000d1','9401','Siswa Pulih','active',true);
+  update public.students set full_name = 'Siswa Pulih 2', updated_at = '2020-01-01' where id = '50000000-0000-0000-0000-0000000000d1';
+  select count(*) into n1 from public.audit_logs;
+  perform public.check_('pemulihan tidak menulis jejak audit per baris', n0 = n1);
+  perform public.check_('pemulihan mempertahankan updated_at asli', (select updated_at from public.students where id='50000000-0000-0000-0000-0000000000d1') = '2020-01-01');
+  update public.restore_state set started_at = now() - interval '4 hours' where id = 1;
+  perform public.check_('mode pemulihan kedaluwarsa otomatis setelah 3 jam', not public.restoring());
+  perform public.restore_end();
+  update public.students set full_name = 'Siswa Pulih 3' where id = '50000000-0000-0000-0000-0000000000d1';
+  perform public.check_('setelah selesai audit kembali aktif', (select count(*) from public.audit_logs) > n1);
+  perform public.check_('setelah selesai updated_at kembali otomatis', (select updated_at from public.students where id='50000000-0000-0000-0000-0000000000d1') > '2021-01-01');
+end $$;

@@ -4,7 +4,7 @@ Sistem absensi, izin, dispensasi, pulang lebih awal, dan pelaporan untuk SDN Pan
 
 Teknologi: Next.js 15 (App Router), React 19, TypeScript, Tailwind CSS, Supabase (PostgreSQL, Auth, RLS, Storage privat), Zod, React Hook Form, zxing (pemindai QR), recharts, jsPDF dan xlsx (ekspor).
 
-> Status verifikasi yang jujur: migrasi basis data dan aturan perilaku (RLS, RPC) sudah diuji pada PostgreSQL 16 lokal dengan stub Supabase (122 pemeriksaan lulus). Kode aplikasi baru melewati pemeriksaan sintaks dan impor. `npm run build`, `lint`, `typecheck`, dan pengujian peramban BELUM dijalankan karena dependensi belum dipasang. Lihat docs/TESTING_CHECKLIST.md dan jalankan sebelum dipakai.
+> Status verifikasi yang jujur: migrasi basis data dan aturan perilaku (RLS, RPC) sudah diuji pada PostgreSQL 16 lokal dengan stub Supabase (191 pemeriksaan lulus). Kode aplikasi baru melewati pemeriksaan sintaks dan impor. `npm run build`, `lint`, `typecheck`, dan pengujian peramban BELUM dijalankan karena dependensi belum dipasang. Lihat docs/TESTING_CHECKLIST.md dan jalankan sebelum dipakai.
 
 ## Modul
 
@@ -28,7 +28,7 @@ npm install
 
 1. Buat proyek di https://supabase.com. Catat Project URL, anon key, dan service-role key (Project Settings > API).
 2. Buka SQL Editor, jalankan berkas berikut BERURUTAN, satu per satu, dan pastikan tiap berkas selesai tanpa galat:
-   `supabase/migrations/001_schema.sql` sampai `011_reconcile_class.sql`.
+   `supabase/migrations/001_schema.sql` sampai `017_restore_mode.sql`.
    (Atau dengan CLI: `supabase db push` pada proyek yang sudah di-link.)
 3. Authentication > Providers: aktifkan Email. Nonaktifkan pendaftaran mandiri (Sign ups) agar akun hanya dibuat administrator.
 4. Authentication > URL Configuration: Site URL = alamat aplikasi; tambahkan `<alamat>/auth/callback` ke Redirect URLs.
@@ -87,3 +87,6 @@ Pemindai QR tidak memiliki antrean offline (sengaja: kegagalan ditampilkan jelas
 ## Hak cipta
 
 Hak Cipta (c) 2026 Viky Aditama. Dikembangkan oleh Viky Aditama bersama Tim PPL SDN Pandian 1 Sumenep, Universitas PGRI Sumenep 2026. Seluruh hak dilindungi. Ketentuan penggunaan ada di [LICENSE.md](LICENSE.md). Teks hak cipta pada aplikasi diatur di `src/lib/copyright.ts`.
+
+## Pencadangan dan pemulihan
+Super admin membuat cadangan terenkripsi di Pengaturan > Pencadangan data. Pemeriksaan dan pemulihan lewat `scripts/backup/restore.mjs`. Panduan lengkap: docs/BACKUP_RESTORE_SOP.md.

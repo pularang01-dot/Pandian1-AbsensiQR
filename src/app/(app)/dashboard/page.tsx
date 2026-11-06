@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import {
-  ArrowRight, CheckCircle2, Clock, FileText, Flag, HelpCircle, Stethoscope, Users, UserX,
+  AlertTriangle, ArrowRight, CheckCircle2, Clock, FileText, Flag, HelpCircle, Stethoscope, Users, UserX,
 } from "lucide-react";
 import { STAFF_ROLES, APPROVER_ROLES } from "@/lib/auth/roles";
 import { requireRole } from "@/lib/auth/session";
@@ -14,6 +14,7 @@ import { Input, Select } from "@/components/ui/field";
 import { FilterBar, FilterField } from "@/components/ui/filter-bar";
 import { ClassBars, DistributionDonut, TrendLine } from "@/components/charts/attendance-charts";
 import { loadDashboard } from "@/lib/data/dashboard";
+import { ensureBackupReminder, loadBackupStatus } from "@/lib/backup/reminder";
 import { asDate, asUuid, loadClasses, loadYears, pickYear } from "@/lib/data/lookups";
 import { formatRate, STATUS_KEYS } from "@/lib/attendance-calc";
 import { formatTanggal, formatWaktu, todayISO } from "@/lib/utils";
@@ -53,6 +54,15 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
   const isApprover = user.roles.some((r) => APPROVER_ROLES.includes(r));
 
   const data = await loadDashboard(date, classId, classNames);
+
+  // Pengingat cadangan: hanya super admin. Kegagalan di sini tidak boleh merusak dashboard.
+  let backup: Awaited<ReturnType<typeof loadBackupStatus>> | null = null;
+  if (user.roles.includes("super_admin")) {
+    try {
+      backup = await loadBackupStatus();
+      await ensureBackupReminder(user.id, backup);
+    } catch { backup = null; }
+  }
 
   let recentQuery = supabase
     .from("attendance_records")
@@ -94,6 +104,19 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
         title="Dashboard"
         description={`Ringkasan kehadiran ${formatTanggal(date)}${year ? ` | Tahun ajaran ${year.name}` : ""}`}
       />
+
+      {backup?.stale && (
+        <div role="alert" className="mb-6 flex flex-col gap-3 rounded-lg border border-warning/40 bg-warning/10 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+          <p className="flex items-start gap-2 text-sm">
+            <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-warning" aria-hidden />
+            <span>
+              <span className="font-semibold">Cadangan data perlu diperbarui. </span>
+              {backup.ageDays === null ? "Belum pernah ada cadangan tercatat." : `Cadangan terakhir ${backup.ageDays} hari lalu.`}
+            </span>
+          </p>
+          <Link href="/settings/backup" className="inline-flex h-11 items-center justify-center rounded-lg bg-brand px-4 text-sm font-medium text-white hover:bg-[#2b68bd]">Buat cadangan</Link>
+        </div>
+      )}
 
       <div className="card mb-6">
         <FilterBar action="/dashboard" resetHref="/dashboard">

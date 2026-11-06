@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { CalendarClock, CalendarDays, GraduationCap, ShieldCheck, UserX, Users } from "lucide-react";
+import { Database, CalendarClock, CalendarDays, GraduationCap, ShieldCheck, UserX, Users } from "lucide-react";
 import { ADMIN_ROLES } from "@/lib/auth/roles";
 import { requireRole } from "@/lib/auth/session";
 import { PageHeader } from "@/components/ui/page-header";
@@ -18,17 +18,18 @@ const LINKS = [
   { href: "/settings/school-calendar", title: "Kalender sekolah", desc: "Hari libur, hari sekolah tambahan, kegiatan khusus.", icon: CalendarDays },
   { href: "/settings/attendance", title: "Aturan absensi", desc: "Jam masuk, batas terlambat, penutupan, hari sekolah.", icon: CalendarClock },
   { href: "/settings/hygiene", title: "Kebersihan akun", desc: "Penonaktifan otomatis akun orang tua tanpa anak aktif dan akun tidak terpakai.", icon: UserX },
+  { href: "/settings/backup", title: "Pencadangan data", desc: "Unduh cadangan terenkripsi seluruh data. Hanya super admin.", icon: Database, superOnly: true },
   { href: "/settings/roles", title: "Peran dan hak akses", desc: "Ringkasan wewenang setiap peran.", icon: ShieldCheck },
 ];
 
 export default async function SettingsPage() {
-  await requireRole(ADMIN_ROLES);
+  const me = await requireRole(ADMIN_ROLES);
   const s = await loadSettings();
   return (
     <>
       <PageHeader title="Pengaturan" description="Semua perubahan pengaturan tercatat di jejak audit." />
       <div className="mb-8 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        {LINKS.map((l) => (
+        {LINKS.filter((l) => !("superOnly" in l) || me.roles.includes("super_admin")).map((l) => (
           <Link key={l.href} href={l.href} className="card block p-5 hover:border-brand">
             <l.icon className="mb-3 h-6 w-6 text-brand" aria-hidden />
             <h2 className="text-base font-semibold">{l.title}</h2>
