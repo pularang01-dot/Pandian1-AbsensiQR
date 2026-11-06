@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { CalendarClock, CalendarDays, GraduationCap, ShieldCheck, Users } from "lucide-react";
+import { CalendarClock, CalendarDays, GraduationCap, ShieldCheck, UserX, Users } from "lucide-react";
 import { ADMIN_ROLES } from "@/lib/auth/roles";
 import { requireRole } from "@/lib/auth/session";
 import { PageHeader } from "@/components/ui/page-header";
@@ -17,6 +17,7 @@ const LINKS = [
   { href: "/settings/academic-year", title: "Tahun ajaran", desc: "Buat, aktifkan, dan arsipkan tahun ajaran.", icon: GraduationCap },
   { href: "/settings/school-calendar", title: "Kalender sekolah", desc: "Hari libur, hari sekolah tambahan, kegiatan khusus.", icon: CalendarDays },
   { href: "/settings/attendance", title: "Aturan absensi", desc: "Jam masuk, batas terlambat, penutupan, hari sekolah.", icon: CalendarClock },
+  { href: "/settings/hygiene", title: "Kebersihan akun", desc: "Penonaktifan otomatis akun orang tua tanpa anak aktif dan akun tidak terpakai.", icon: UserX },
   { href: "/settings/roles", title: "Peran dan hak akses", desc: "Ringkasan wewenang setiap peran.", icon: ShieldCheck },
 ];
 

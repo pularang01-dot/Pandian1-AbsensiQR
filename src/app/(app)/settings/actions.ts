@@ -5,7 +5,7 @@ import { ADMIN_ROLES } from "@/lib/auth/roles";
 import { requireRole } from "@/lib/auth/session";
 import { createClient } from "@/lib/supabase/server";
 import { friendlyDbError, zodFieldErrors, type ActionState } from "@/lib/validation/common";
-import { attendanceSettingsSchema, calendarSchema, schoolSchema, yearSchema } from "@/lib/validation/settings";
+import { attendanceSettingsSchema, calendarSchema, hygieneSchema, schoolSchema, yearSchema } from "@/lib/validation/settings";
 
 async function saveSettings(entries: Record<string, unknown>): Promise<ActionState> {
   const user = await requireRole(ADMIN_ROLES);
@@ -82,4 +82,22 @@ export async function deleteCalendarAction(id: string): Promise<ActionState> {
   if (error) return { ok: false, message: friendlyDbError(error) };
   revalidatePath("/settings/school-calendar");
   return { ok: true, message: "Entri dihapus. Catatan absensi yang sudah ada tidak berubah." };
+}
+
+export async function saveHygieneSettingsAction(_p: ActionState, fd: FormData): Promise<ActionState> {
+  await requireRole(ADMIN_ROLES);
+  const parsed = hygieneSchema.safeParse({ orphan_days: fd.get("orphan_days") ?? "", stale_days: fd.get("stale_days") ?? "" });
+  if (!parsed.success) return { ok: false, fieldErrors: zodFieldErrors(parsed.error) };
+  return saveSettings({ "hygiene.orphan_parent_days": parsed.data.orphan_days, "hygiene.stale_account_days": parsed.data.stale_days });
+}
+
+export async function runHygieneNowAction(): Promise<ActionState> {
+  await requireRole(ADMIN_ROLES);
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("run_account_hygiene_now", { p_dry: false });
+  if (error) return { ok: false, message: friendlyDbError(error) };
+  const d = data as { orphan_parents?: number; stale_accounts?: number };
+  revalidatePath("/settings", "layout");
+  const total = Number(d.orphan_parents ?? 0) + Number(d.stale_accounts ?? 0);
+  return { ok: true, message: total > 0 ? `${d.orphan_parents ?? 0} akun orang tua dan ${d.stale_accounts ?? 0} akun tidak terpakai dinonaktifkan.` : "Tidak ada akun yang perlu dinonaktifkan." };
 }

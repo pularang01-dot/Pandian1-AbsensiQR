@@ -45,3 +45,8 @@ export const createUserSchema = z.object({
   relationship: z.enum(["ayah", "ibu", "wali"]).optional(),
   mode: z.enum(["invite", "google"]).default("invite"),
 });
+
+export const hygieneSchema = z.object({
+  orphan_days: z.coerce.number({ message: "Isi angka." }).int("Harus bilangan bulat.").min(0, "Minimal 0.").max(365, "Maksimal 365."),
+  stale_days: z.coerce.number({ message: "Isi angka." }).int("Harus bilangan bulat.").min(0, "Minimal 0.").max(365, "Maksimal 365."),
+});
