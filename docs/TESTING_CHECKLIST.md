@@ -41,3 +41,10 @@ Beban: pindai beruntun saat jam masuk (misalnya 200 siswa dalam 15 menit).
 - [ ] Latihan pemulihan di proyek Supabase percobaan: `restore` (uji coba) lalu `--apply`; jumlah baris cocok, masuk dengan Google/Lupa kata sandi berhasil.
 - [ ] Halaman Pencadangan > Periksa cadangan: berkas benar + sandi benar menampilkan pesan hijau dan tabel jumlah; sandi salah ditolak; berkas bukan .psabak ditolak.
 - [ ] Unduh versi Excel: 5 lembar (Siswa, Kelas, Rekap absensi, Absensi harian, Izin) terbuka di Excel, nama beraksen tampil benar, tidak ada kolom alasan izin.
+## Logo dan PWA
+- [ ] Halaman masuk: lambang tampil tajam di panel kiri (desktop) dan di atas formulir (ponsel); menu samping memuat lambang dalam kotak putih.
+- [ ] Tab browser menampilkan ikon lambang; setelah deploy, /manifest.webmanifest terbuka tanpa masuk (tidak dialihkan ke login).
+- [ ] Chrome Android: muncul tombol "Pasang aplikasi"; setelah dipasang, ikon di layar utama berbentuk lambang utuh (tidak terpotong) dan aplikasi terbuka tanpa bilah alamat.
+- [ ] iPhone Safari: petunjuk "Tambahkan ke Layar Utama" tampil; ikon benar.
+- [ ] Matikan internet lalu buka aplikasi terpasang: tampil halaman "Tidak ada sambungan internet", bukan data siswa.
+- [ ] DevTools > Application > Service Workers: hanya sw.js; Cache Storage hanya berisi offline.html, logo, dan ikon.

@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { GraduationCap } from "lucide-react";
+import { SchoolLogo } from "@/components/brand/school-logo";
 import { CopyrightFooter } from "@/components/layout/copyright-footer";
 
 export function AuthShell({ title, description, children }: { title: string; description: string; children: ReactNode }) {
@@ -7,15 +7,13 @@ export function AuthShell({ title, description, children }: { title: string; des
     <main className="grid min-h-screen lg:grid-cols-2">
       <section className="relative hidden flex-col justify-between bg-navy p-12 text-white lg:flex">
         <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-white/10">
-            <GraduationCap className="h-6 w-6" aria-hidden />
-          </div>
-          <div>
-            <p className="text-sm font-semibold tracking-wide">PANDIAN SMART ATTENDANCE</p>
-            <p className="text-xs text-white/70">SDN PANDIAN 1 SUMENEP</p>
-          </div>
+          <p className="text-sm font-semibold tracking-wide">PANDIAN SMART ATTENDANCE</p>
         </div>
         <div className="max-w-md">
+          <div className="mb-8 inline-flex rounded-2xl bg-white p-4 shadow-pop">
+            <SchoolLogo size={112} priority />
+          </div>
+          <p className="mb-3 text-sm font-semibold tracking-wide text-white/80">SDN PANDIAN 1 SUMENEP</p>
           <h2 className="text-3xl font-semibold leading-tight tracking-tight">
             Absensi, perizinan, dan administrasi siswa dalam satu sistem yang tertib.
           </h2>
@@ -29,9 +27,7 @@ export function AuthShell({ title, description, children }: { title: string; des
       <section className="flex items-center justify-center px-5 py-12">
         <div className="w-full max-w-sm">
           <div className="mb-8 flex items-center gap-3 lg:hidden">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-navy text-white">
-              <GraduationCap className="h-6 w-6" aria-hidden />
-            </div>
+            <SchoolLogo size={52} priority />
             <div>
               <p className="text-sm font-semibold text-ink">PANDIAN SMART ATTENDANCE</p>
               <p className="text-xs text-ink-muted">SDN PANDIAN 1 SUMENEP</p>

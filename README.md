@@ -93,3 +93,6 @@ Super admin membuat cadangan terenkripsi di Pengaturan > Pencadangan data. Pemer
 
 ## Penjaga proyek tidak tertidur
 `vercel.json` menjadwalkan panggilan harian ke `/api/keepalive`. Atur environment variable `CRON_SECRET` (teks acak minimal 32 karakter) di Vercel, lalu deploy ulang. Tanpa itu endpoint menjawab 503 dan penjaga tidak bekerja.
+
+## Logo dan aplikasi terpasang (PWA)
+Lambang sekolah: `public/logo.png` (tampil di halaman masuk dan menu samping), ikon aplikasi di `public/icons/` serta `src/app/icon.png`, `apple-icon.png`, `favicon.ico`. Manifest di `src/app/manifest.ts`. Service worker `public/sw.js` sengaja hanya menyimpan halaman "tidak ada sambungan" dan lambang; TIDAK menyimpan data siswa, dan absensi tetap butuh internet. Pemasangan: Chrome/Edge (tombol "Pasang aplikasi" di bilah atas), iPhone/iPad (Safari > Bagikan > Tambahkan ke Layar Utama).

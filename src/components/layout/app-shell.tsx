@@ -4,7 +4,9 @@ import { useState, type ReactNode } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { CopyrightFooter } from "./copyright-footer";
-import { Bell, GraduationCap, LogOut, Menu, X } from "lucide-react";
+import { Bell, LogOut, Menu, X } from "lucide-react";
+import { SchoolLogo } from "@/components/brand/school-logo";
+import { InstallApp } from "@/components/pwa/install-app";
 import { cn } from "@/lib/utils";
 import { navForRole, isActive } from "@/lib/navigation";
 import { ROLE_LABEL, type Role } from "@/lib/auth/roles";
@@ -61,8 +63,8 @@ export function AppShell({
 
   const brand = (
     <div className="flex h-16 shrink-0 items-center gap-3 border-b border-white/10 px-5">
-      <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-white/10 text-white">
-        <GraduationCap className="h-5 w-5" aria-hidden />
+      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-white">
+        <SchoolLogo size={30} />
       </div>
       <div className="min-w-0 leading-tight">
         <p className="truncate text-sm font-semibold text-white">Pandian Smart Attendance</p>
@@ -116,6 +118,7 @@ export function AppShell({
               </span>
             )}
           </Link>
+          <InstallApp />
           <div className="hidden text-right sm:block">
             <p className="text-sm font-medium leading-tight text-ink">{fullName}</p>
             <p className="text-xs text-ink-muted">{ROLE_LABEL[role]}</p>
