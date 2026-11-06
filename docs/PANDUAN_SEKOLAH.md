@@ -36,3 +36,6 @@ Saat ini pemulihan dilakukan oleh seorang pengembang memakai skrip (lihat docs/B
 - [ ] Latihan pemulihan sudah dilakukan bersama developer pada proyek Supabase percobaan, dan hasilnya dicatat.
 - [ ] Nama dan kontak seorang pengembang atau pihak kampus yang bisa dihubungi bila ada masalah teknis, ditulis oleh sekolah sendiri: ____________
 - [ ] Jadwal pencadangan mingguan ditetapkan, dengan nama petugasnya: ____________
+
+## Supaya aplikasi tidak "tertidur" saat libur
+Supabase paket gratis menjeda proyek yang tidak aktif sekitar seminggu. Aplikasi menjalankan penjaga otomatis harian (`/api/keepalive` lewat Vercel Cron) yang menyentuh database. Penjaga ini membutuhkan variabel `CRON_SECRET` di Vercel (lihat README). Cek berkala di Vercel > Project > Cron Jobs bahwa jadwalnya berjalan. Jika aplikasi tetap tidak bisa dibuka setelah libur panjang, buka Dashboard Supabase dan klik "Restore project".

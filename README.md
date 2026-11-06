@@ -90,3 +90,6 @@ Hak Cipta (c) 2026 Viky Aditama. Dikembangkan oleh Viky Aditama bersama Tim PPL 
 
 ## Pencadangan dan pemulihan
 Super admin membuat cadangan terenkripsi di Pengaturan > Pencadangan data. Pemeriksaan dan pemulihan lewat `scripts/backup/restore.mjs`. Panduan lengkap: docs/BACKUP_RESTORE_SOP.md.
+
+## Penjaga proyek tidak tertidur
+`vercel.json` menjadwalkan panggilan harian ke `/api/keepalive`. Atur environment variable `CRON_SECRET` (teks acak minimal 32 karakter) di Vercel, lalu deploy ulang. Tanpa itu endpoint menjawab 503 dan penjaga tidak bekerja.
