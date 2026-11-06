@@ -3,6 +3,7 @@ import { Inter } from "next/font/google";
 import { Toaster } from "sonner";
 import "./globals.css";
 import { SwRegister } from "@/components/pwa/sw-register";
+import { InstallBanner } from "@/components/pwa/install-banner";
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-inter", display: "swap" });
 
@@ -27,6 +28,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body>
         {children}
         <SwRegister />
+        <InstallBanner />
         <Toaster position="top-right" richColors closeButton />
       </body>
     </html>
