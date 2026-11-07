@@ -67,3 +67,13 @@ Beban: pindai beruntun saat jam masuk (misalnya 200 siswa dalam 15 menit).
 - [ ] Dashboard memperlihatkan angka terbaru; entri audit "class_attendance" muncul.
 - [ ] Tampilan ponsel: lima tombol status muat satu baris, mudah ditekan, bilah Simpan di bawah tidak menutupi baris terakhir.
 - [ ] Antara pukul 06.00-07.00 WIB, "hari ini" di dashboard dan Absen Kelas sudah tanggal hari ini (bukan kemarin).
+
+## Aktivitas administrasi
+- [ ] Menu Aktivitas muncul untuk super admin, admin sekolah, dan kepala sekolah; TIDAK untuk guru, operator, dan orang tua (membuka /activity dialihkan).
+- [ ] Daftar menampilkan kalimat Indonesia, nama pelaku, tanggal dan jam WIB yang benar (cocokkan dengan jam di ponsel).
+- [ ] Ubah status satu siswa, lalu cek: muncul "Mengubah data siswa: NAMA" dengan "Status: aktif menjadi ..." dan rincian Sebelum/Sesudah.
+- [ ] Filter Jenis, Dilakukan oleh, rentang tanggal bekerja; paginasi mempertahankan filter.
+- [ ] Pemindaian QR harian tidak membanjiri daftar; centang "Sertakan perubahan rutin" menampilkannya.
+- [ ] Rincian tidak pernah menampilkan token QR atau kata sandi (tertulis "(disembunyikan)").
+- [ ] Link "Lihat semua" di kartu dashboard membuka halaman ini.
+- [ ] Jam di Data absensi dan dashboard sekarang menurut WIB (pindai pukul 06.45 tampil 06:45, bukan 23:45).

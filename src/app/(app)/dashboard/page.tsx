@@ -303,7 +303,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
 
         {isApprover && (
           <div className="card">
-            <div className="border-b border-line px-5 py-4"><h2 className="text-base font-semibold">Aktivitas administrasi terbaru</h2></div>
+            <div className="flex items-center justify-between border-b border-line px-5 py-4"><h2 className="text-base font-semibold">Aktivitas administrasi terbaru</h2><Link href="/activity" className="text-sm font-medium text-brand hover:underline">Lihat semua</Link></div>
             {(audits.data ?? []).length === 0 ? (
               <EmptyState title="Belum ada aktivitas" />
             ) : (

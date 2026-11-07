@@ -96,3 +96,6 @@ Super admin membuat cadangan terenkripsi di Pengaturan > Pencadangan data. Pemer
 
 ## Logo dan aplikasi terpasang (PWA)
 Lambang sekolah: `public/logo.png` (tampil di halaman masuk dan menu samping), ikon aplikasi di `public/icons/` serta `src/app/icon.png`, `apple-icon.png`, `favicon.ico`. Manifest di `src/app/manifest.ts`. Service worker `public/sw.js` sengaja hanya menyimpan halaman "tidak ada sambungan" dan lambang; TIDAK menyimpan data siswa, dan absensi tetap butuh internet. Pemasangan: Chrome/Edge (tombol "Pasang aplikasi" di bilah atas), iPhone/iPad (Safari > Bagikan > Tambahkan ke Layar Utama).
+
+## Aktivitas administrasi
+Halaman `/activity` (super admin, admin sekolah, kepala sekolah) menampilkan jejak audit dalam kalimat Indonesia dengan filter dan rincian sebelum-sesudah. Nilai rahasia disembunyikan. Pembaruan `utils.ts`: tanggal dan jam kini selalu menurut zona waktu sekolah (Asia/Jakarta), bukan zona server.

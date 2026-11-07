@@ -1,8 +1,8 @@
 import {
   LayoutDashboard, Users, School, ScanLine, ClipboardList, FileText, Flag, DoorOpen, BarChart3, Settings,
-  Baby, CalendarCheck, UserCheck, type LucideIcon,
+  Baby, CalendarCheck, UserCheck, History, type LucideIcon,
 } from "lucide-react";
-import { STAFF_ROLES, ADMIN_ROLES, type Role } from "@/lib/auth/roles";
+import { STAFF_ROLES, ADMIN_ROLES, APPROVER_ROLES, type Role } from "@/lib/auth/roles";
 
 export type NavItem = { href: string; label: string; icon: LucideIcon; roles: Role[] };
 export type NavGroup = { title: string; items: NavItem[] };
@@ -38,6 +38,7 @@ export const NAV_GROUPS: NavGroup[] = [
       { href: "/permissions", label: "Izin & Sakit", icon: FileText, roles: STAFF_ROLES },
       { href: "/dispensations", label: "Dispensasi", icon: Flag, roles: STAFF_ROLES },
       { href: "/early-dismissal", label: "Pulang Lebih Awal", icon: DoorOpen, roles: STAFF_ROLES },
+      { href: "/activity", label: "Aktivitas", icon: History, roles: APPROVER_ROLES },
     ],
   },
   {
