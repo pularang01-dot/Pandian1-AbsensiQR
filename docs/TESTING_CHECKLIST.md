@@ -41,6 +41,7 @@ Beban: pindai beruntun saat jam masuk (misalnya 200 siswa dalam 15 menit).
 - [ ] Latihan pemulihan di proyek Supabase percobaan: `restore` (uji coba) lalu `--apply`; jumlah baris cocok, masuk dengan Google/Lupa kata sandi berhasil.
 - [ ] Halaman Pencadangan > Periksa cadangan: berkas benar + sandi benar menampilkan pesan hijau dan tabel jumlah; sandi salah ditolak; berkas bukan .psabak ditolak.
 - [ ] Unduh versi Excel: 5 lembar (Siswa, Kelas, Rekap absensi, Absensi harian, Izin) terbuka di Excel, nama beraksen tampil benar, tidak ada kolom alasan izin.
+
 ## Logo dan PWA
 - [ ] Halaman masuk: lambang tampil tajam di panel kiri (desktop) dan di atas formulir (ponsel); menu samping memuat lambang dalam kotak putih.
 - [ ] Tab browser menampilkan ikon lambang; setelah deploy, /manifest.webmanifest terbuka tanpa masuk (tidak dialihkan ke login).
@@ -48,3 +49,21 @@ Beban: pindai beruntun saat jam masuk (misalnya 200 siswa dalam 15 menit).
 - [ ] iPhone Safari: petunjuk "Tambahkan ke Layar Utama" tampil; ikon benar.
 - [ ] Matikan internet lalu buka aplikasi terpasang: tampil halaman "Tidak ada sambungan internet", bukan data siswa.
 - [ ] DevTools > Application > Service Workers: hanya sw.js; Cache Storage hanya berisi offline.html, logo, dan ikon.
+- [ ] Laporan harian/bulanan/per siswa: Cetak (Ctrl+P) menampilkan kop berlogo di atas tabel; kop tidak tampil di layar biasa.
+- [ ] Ekspor PDF: kop berlogo, nama sekolah, serta alamat dan telepon (bila diisi di Pengaturan) tampil rapi dan tabel tidak menimpa kop.
+- [ ] Ekspor Excel dan CSV: baris pertama berisi nama sekolah (tanpa gambar).
+- [ ] Cetak kartu QR: lambang kecil tampil di samping nama sekolah pada tiap kartu.
+- [ ] Banner "Pasang Pandian Absensi" muncul sekitar 3 detik setelah halaman terbuka (Chrome Android atau Edge, produksi). Tombol Pasang membuka dialog bawaan; Nanti/X menutup dan banner tidak muncul lagi selama 14 hari.
+- [ ] iPhone Safari: banner berisi petunjuk Bagikan > Tambahkan ke Layar Utama, tombol Mengerti menutupnya.
+- [ ] Setelah aplikasi terpasang, banner dan tombol Pasang aplikasi tidak muncul lagi.
+
+## Absen kelas
+- [ ] Guru wali kelas: menu Absen Kelas menampilkan daftar siswa kelasnya saja; guru tanpa kelas melihat pesan "belum ditetapkan sebagai wali kelas".
+- [ ] Pilih status beberapa siswa, ketuk status yang sama lagi membatalkan pilihan; Sakit/Izin/Alpa memunculkan kolom catatan opsional.
+- [ ] "Pilih Hadir untuk yang belum dipilih" hanya mengisi yang kosong; tidak ada yang tersimpan sebelum menekan Simpan dan konfirmasi.
+- [ ] Setelah simpan: siswa berstatus terkunci dengan label sumber Manual; siswa tidak dipilih tetap tanpa catatan (bukan Alpa).
+- [ ] Siswa yang sudah dipindai QR tampil terkunci dan tidak bisa diubah dari halaman ini.
+- [ ] Admin: dapat memilih kelas lain; guru tidak bisa membuka kelas lain lewat ?class= di alamat.
+- [ ] Dashboard memperlihatkan angka terbaru; entri audit "class_attendance" muncul.
+- [ ] Tampilan ponsel: lima tombol status muat satu baris, mudah ditekan, bilah Simpan di bawah tidak menutupi baris terakhir.
+- [ ] Antara pukul 06.00-07.00 WIB, "hari ini" di dashboard dan Absen Kelas sudah tanggal hari ini (bukan kemarin).

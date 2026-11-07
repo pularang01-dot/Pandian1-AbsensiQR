@@ -36,6 +36,7 @@ export const ROUTE_ACCESS: { prefix: string; roles: Role[] }[] = [
   { prefix: "/students", roles: STAFF_ROLES },
   { prefix: "/classes/promotion", roles: ADMIN_ROLES },
   { prefix: "/classes", roles: STAFF_ROLES },
+  { prefix: "/attendance/class", roles: ["super_admin", "school_admin", "teacher", "operator"] },
   { prefix: "/attendance/scanner", roles: ["super_admin", "school_admin", "teacher", "operator"] },
   { prefix: "/attendance", roles: STAFF_ROLES },
   { prefix: "/permissions", roles: STAFF_ROLES },

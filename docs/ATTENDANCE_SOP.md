@@ -14,7 +14,7 @@ Nilai jam di bawah adalah contoh bawaan. Sekolah wajib menetapkan jam dan hari s
 2. Siswa tiba: pindai kartu QR. Layar menampilkan nama dan kelas siswa. Operator mencocokkan dengan siswa di depannya, lalu Konfirmasi. Status Hadir bila sebelum batas terlambat, Terlambat bila sesudahnya.
 3. Siswa lupa kartu: gunakan pencatatan manual (cari nama), dengan catatan.
 4. Kartu hilang atau disalahgunakan: administrator menerbitkan ulang QR di rincian siswa. Token lama langsung dicabut.
-5. Setelah jam penutupan: administrator atau wali kelas menjalankan Rekonsiliasi. Siswa tanpa catatan dan tanpa izin disetujui menjadi Alpa; siswa dengan izin/sakit/dispensasi disetujui mengikuti statusnya. Sebelum jam penutupan sistem menolak rekonsiliasi.
+5. Setelah jam penutupan: administrator menjalankan Rekonsiliasi seluruh sekolah (sesi ditutup); wali kelas menjalankannya hanya untuk kelasnya sendiri (sesi tidak ditutup). Siswa tanpa catatan dan tanpa izin disetujui menjadi Alpa; siswa dengan izin/sakit/dispensasi disetujui mengikuti statusnya. Sebelum jam penutupan sistem menolak rekonsiliasi.
 6. Salah catat: Koreksi dari halaman Data Absensi, wajib alasan minimal 5 karakter.
 
 ## Status
@@ -24,3 +24,15 @@ Hadir, Terlambat (keduanya kehadiran fisik); Sakit, Izin (ketidakhadiran bersetu
 ## Kegagalan jaringan
 
 Pemindai tidak menyimpan antrean offline. Bila gagal, layar menyatakan data BELUM tersimpan. Catat manual di kertas lalu input ulang setelah koneksi pulih; jangan menganggap pindaian berhasil tanpa tanda konfirmasi.
+
+## Absen kelas (pilih status per siswa)
+Menu **Absen Kelas** memudahkan wali kelas mencatat kehadiran tanpa memindai QR: daftar siswa kelas tampil, wali kelas memilih Hadir, Terlambat, Sakit, Izin, atau Alpa, lalu menyimpan sekaligus.
+
+Aturan:
+- Wali kelas hanya dapat mengabsen kelas yang ia ampu. Administrator dan operator dapat memilih kelas mana pun.
+- Hanya untuk hari ini, pada hari sekolah, selama sesi belum ditutup.
+- Siswa yang tidak dipilih tidak dicatat dan TIDAK otomatis Alpa. Alpa hanya bila dipilih.
+- Catatan yang sudah ada (QR, izin disetujui, dispensasi) tidak ditimpa. Perubahan lewat Koreksi dengan alasan.
+- Sumber catatan: Manual. Setiap paket tersimpan tercatat di jejak audit.
+- Sakit atau Izin yang dipilih guru adalah catatan kehadiran oleh guru, BUKAN persetujuan pengajuan izin. Surat atau pengajuan resmi orang tua tetap diproses di menu Izin & Sakit.
+- Absensi QR bukan bukti kehadiran fisik yang mutlak, dan absensi manual juga bergantung pada kejujuran pencatat; itu sebabnya semua tercatat dan dapat diaudit.

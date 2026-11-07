@@ -1,6 +1,6 @@
 import {
   LayoutDashboard, Users, School, ScanLine, ClipboardList, FileText, Flag, DoorOpen, BarChart3, Settings,
-  Baby, CalendarCheck, type LucideIcon,
+  Baby, CalendarCheck, UserCheck, type LucideIcon,
 } from "lucide-react";
 import { STAFF_ROLES, ADMIN_ROLES, type Role } from "@/lib/auth/roles";
 
@@ -25,6 +25,7 @@ export const NAV_GROUPS: NavGroup[] = [
   {
     title: "Absensi",
     items: [
+      { href: "/attendance/class", label: "Absen Kelas", icon: UserCheck, roles: SCAN_ROLES },
       { href: "/attendance/scanner", label: "Pemindai QR", icon: ScanLine, roles: SCAN_ROLES },
       { href: "/attendance", label: "Data Absensi", icon: ClipboardList, roles: STAFF_ROLES },
     ],

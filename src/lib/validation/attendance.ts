@@ -20,6 +20,15 @@ export const correctionSchema = z.object({
   reason: z.string().trim().min(5, "Alasan koreksi minimal 5 karakter.").max(500),
 });
 
+export const classAttendanceSchema = z.object({
+  class_id: z.string().uuid(),
+  entries: z.array(z.object({
+    student_id: z.string().uuid(),
+    status: z.enum(["present", "late", "sick", "permission", "unexcused"]),
+    note: z.string().trim().max(300, "Catatan maksimal 300 karakter.").optional(),
+  })).min(1, "Belum ada siswa yang dipilih.").max(200, "Terlalu banyak baris dalam satu simpanan."),
+});
+
 export type RpcResult = {
   result: string;
   message?: string;

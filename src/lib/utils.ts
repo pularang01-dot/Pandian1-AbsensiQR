@@ -18,9 +18,15 @@ export function formatWaktu(value: string | Date) {
   return format(date, "HH:mm", { locale: idLocale });
 }
 
-/** Tanggal lokal (zona waktu perangkat) dalam format yyyy-MM-dd. */
+const SCHOOL_TZ = "Asia/Jakarta";
+const ISO_DAY = new Intl.DateTimeFormat("en-CA", { timeZone: SCHOOL_TZ, year: "numeric", month: "2-digit", day: "2-digit" });
+
+/**
+ * Tanggal menurut zona waktu SEKOLAH (Asia/Jakarta) dalam format yyyy-MM-dd, bukan zona server/perangkat.
+ * Server Vercel berjalan di UTC; tanpa ini, antara 00.00 dan 07.00 WIB "hari ini" terbaca sebagai kemarin.
+ */
 export function todayISO(now: Date = new Date()) {
-  return format(now, "yyyy-MM-dd");
+  return ISO_DAY.format(now);
 }
 
 export function percent(part: number, total: number) {

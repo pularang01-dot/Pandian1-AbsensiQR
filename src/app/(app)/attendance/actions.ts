@@ -5,7 +5,7 @@ import { APPROVER_ROLES, type Role } from "@/lib/auth/roles";
 import { requireRole } from "@/lib/auth/session";
 import { createClient } from "@/lib/supabase/server";
 import { sanitizeSearch, friendlyDbError, type ActionState } from "@/lib/validation/common";
-import { correctionSchema, recordAttendanceSchema, RESULT_MESSAGE, type RpcResult } from "@/lib/validation/attendance";
+import { classAttendanceSchema, correctionSchema, recordAttendanceSchema, RESULT_MESSAGE, type RpcResult } from "@/lib/validation/attendance";
 import { one } from "@/lib/data/students";
 
 const SCAN_ROLES: Role[] = ["super_admin", "school_admin", "teacher", "operator"];
@@ -91,4 +91,41 @@ export async function reconcileAction(date: string, classId?: string): Promise<A
   revalidatePath("/dashboard");
   const n = Number(data ?? 0);
   return { ok: true, marked: n, message: classId ? `Rekonsiliasi kelas selesai. ${n} siswa tanpa catatan ditandai Alpa.` : `Rekonsiliasi selesai. ${n} siswa tanpa catatan ditandai Alpa dan sesi ditutup.` };
+}
+
+export type ClassAttendanceResult = { ok: boolean; message: string; inserted?: number; skipped?: number };
+
+const CLASS_RESULT_MESSAGE: Record<string, string> = {
+  forbidden: "Anda hanya dapat mengabsen kelas yang Anda ampu.",
+  invalid: "Data tidak valid. Muat ulang halaman lalu coba lagi.",
+  not_school_day: "Hari ini bukan hari sekolah.",
+  session_closed: "Sesi absensi hari ini sudah ditutup.",
+};
+
+/** Menyimpan absensi satu kelas sekaligus. Hak akses, validasi, dan sifat tidak-menimpa ditegakkan di basis data. */
+export async function recordClassAttendanceAction(input: unknown): Promise<ClassAttendanceResult> {
+  await requireRole(SCAN_ROLES);
+  const parsed = classAttendanceSchema.safeParse(input);
+  if (!parsed.success) return { ok: false, message: parsed.error.issues[0]?.message ?? "Data tidak valid." };
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("record_class_attendance", {
+    p_class: parsed.data.class_id,
+    p_entries: parsed.data.entries.map((e) => ({ student_id: e.student_id, status: e.status, note: e.note ?? null })),
+    p_default_note: null,
+  });
+  if (error) return { ok: false, message: `${friendlyDbError(error)} Data BELUM tersimpan.` };
+  const r = (data ?? {}) as { result?: string; message?: string; inserted?: number; skipped?: unknown[] };
+  if (r.result !== "recorded") return { ok: false, message: `${r.message ?? CLASS_RESULT_MESSAGE[r.result ?? ""] ?? "Gagal menyimpan."} Data BELUM tersimpan.` };
+  revalidatePath("/attendance");
+  revalidatePath("/attendance/class");
+  revalidatePath("/dashboard");
+  const skipped = r.skipped?.length ?? 0;
+  return {
+    ok: true,
+    inserted: r.inserted ?? 0,
+    skipped,
+    message: skipped > 0
+      ? `${r.inserted ?? 0} catatan tersimpan. ${skipped} siswa sudah tercatat sebelumnya dan tidak diubah.`
+      : `${r.inserted ?? 0} catatan absensi tersimpan.`,
+  };
 }
