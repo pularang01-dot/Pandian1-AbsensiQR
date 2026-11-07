@@ -36,3 +36,15 @@ Aturan:
 - Sumber catatan: Manual. Setiap paket tersimpan tercatat di jejak audit.
 - Sakit atau Izin yang dipilih guru adalah catatan kehadiran oleh guru, BUKAN persetujuan pengajuan izin. Surat atau pengajuan resmi orang tua tetap diproses di menu Izin & Sakit.
 - Absensi QR bukan bukti kehadiran fisik yang mutlak, dan absensi manual juga bergantung pada kejujuran pencatat; itu sebabnya semua tercatat dan dapat diaudit.
+
+### Absensi susulan (hari yang terlewat)
+Bila absensi suatu hari tidak sempat dicatat (internet mati, guru lupa), administrator dapat mengisinya di Absen Kelas dengan kolom **Tanggal susulan**.
+
+Aturan:
+- Hanya administrator (super admin atau admin sekolah). Guru dan operator tidak dapat mengisi tanggal lampau.
+- Tanggal harus sebelum hari ini, paling lama 30 hari ke belakang, dan harus hari sekolah.
+- Alasan WAJIB diisi (minimal 5 karakter). Alasan tersimpan di jejak audit (menu Aktivitas) dan di catatan tiap siswa dengan awalan "Susulan:".
+- Siswa dihitung berdasarkan keanggotaan kelas pada tanggal itu, bukan keanggotaan sekarang.
+- Catatan yang sudah ada tidak ditimpa. Siswa yang tidak dipilih tidak dianggap Alpa.
+- Catatan susulan tidak memiliki jam masuk, supaya tidak tampak seperti dipindai pada hari itu.
+- Bila sesi tanggal itu sudah ditutup (rekonsiliasi sudah berjalan), siswa tanpa catatan sudah menjadi Alpa; ubah lewat Koreksi dengan alasan, bukan lewat absensi susulan.

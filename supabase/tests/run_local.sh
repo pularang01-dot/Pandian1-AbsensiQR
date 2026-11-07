@@ -14,7 +14,7 @@ initdb -D "$T/data" -A trust -U postgres >/dev/null
 pg_ctl -D "$T/data" -o "-p 54329 -k $T -c listen_addresses=" -l "$T/pg.log" -w start >/dev/null
 P="psql -h $T -p 54329 -U postgres"
 $P -q -c 'create database t'
-for f in "$HERE/local_supabase_stub.sql" "$MIG"/0{0{1,2,3,4,5,6,7,8,9},10,11,12,13,14,15,16,17}_*.sql; do
+for f in "$HERE/local_supabase_stub.sql" "$MIG"/0{0{1,2,3,4,5,6,7,8,9},10,11,12,13,14,15,16,17,18,19}_*.sql; do
   echo "== $(basename "$f")"; $P -d t -v ON_ERROR_STOP=1 -q -f "$f" 2>&1 | head -15
 done
 echo "== UJI PERILAKU"

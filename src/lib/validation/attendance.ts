@@ -29,6 +29,11 @@ export const classAttendanceSchema = z.object({
   })).min(1, "Belum ada siswa yang dipilih.").max(200, "Terlalu banyak baris dalam satu simpanan."),
 });
 
+export const backdatedAttendanceSchema = classAttendanceSchema.extend({
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Tanggal tidak valid."),
+  reason: z.string().trim().min(5, "Alasan wajib diisi (minimal 5 karakter).").max(300, "Alasan maksimal 300 karakter."),
+});
+
 export type RpcResult = {
   result: string;
   message?: string;

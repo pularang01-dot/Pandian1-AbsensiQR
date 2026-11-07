@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Modal } from "@/components/ui/modal";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { cn, formatWaktu } from "@/lib/utils";
-import { recordClassAttendanceAction } from "../actions";
+import { recordBackdatedAttendanceAction, recordClassAttendanceAction } from "../actions";
 
 export type RosterStudent = {
   id: string; name: string; nis: string;
@@ -29,11 +29,13 @@ const SOURCE: Record<string, string> = { qr: "QR", manual: "Manual", permission:
 
 type Sel = { status: Choice; note: string };
 
-export function ClassRoster({ classId, className, students }: { classId: string; className: string; students: RosterStudent[] }) {
+export function ClassRoster({ classId, className, students, date }: { classId: string; className: string; students: RosterStudent[]; date?: string }) {
   const router = useRouter();
   const [sel, setSel] = useState<Record<string, Sel>>({});
   const [confirm, setConfirm] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [reason, setReason] = useState("");
+  const reasonOk = !date || reason.trim().length >= 5;
 
   const open = useMemo(() => students.filter((s) => !s.existing), [students]);
   const chosen = open.filter((s) => sel[s.id]);
@@ -58,13 +60,14 @@ export function ClassRoster({ classId, className, students }: { classId: string;
   async function save() {
     setBusy(true);
     try {
-      const r = await recordClassAttendanceAction({
-        class_id: classId,
-        entries: chosen.map((s) => ({ student_id: s.id, status: sel[s.id].status, note: sel[s.id].note.trim() || undefined })),
-      });
+      const entries = chosen.map((s) => ({ student_id: s.id, status: sel[s.id].status, note: sel[s.id].note.trim() || undefined }));
+      const r = date
+        ? await recordBackdatedAttendanceAction({ class_id: classId, date, reason: reason.trim(), entries })
+        : await recordClassAttendanceAction({ class_id: classId, entries });
       if (r.ok) {
         toast.success(r.message);
         setSel({});
+        setReason("");
         setConfirm(false);
         router.refresh();
       } else {
@@ -163,12 +166,12 @@ export function ClassRoster({ classId, className, students }: { classId: string;
       <Modal
         open={confirm}
         onClose={() => !busy && setConfirm(false)}
-        title="Simpan absensi kelas?"
+        title={date ? "Simpan absensi susulan?" : "Simpan absensi kelas?"}
         description={`Kelas ${className}. Periksa ringkasan sebelum menyimpan.`}
         footer={
           <>
             <Button variant="outline" onClick={() => setConfirm(false)} disabled={busy}>Kembali</Button>
-            <Button onClick={save} loading={busy}>Simpan</Button>
+            <Button onClick={save} loading={busy} disabled={!reasonOk}>Simpan</Button>
           </>
         }
       >
@@ -177,6 +180,20 @@ export function ClassRoster({ classId, className, students }: { classId: string;
             <li key={o.key} className="flex justify-between"><span>{o.label}</span><span className="tabular font-semibold">{counts[o.key]}</span></li>
           ))}
         </ul>
+        {date && (
+          <div className="mb-3">
+            <label htmlFor="reason" className="field-label">Alasan absensi susulan (wajib)</label>
+            <textarea
+              id="reason"
+              value={reason}
+              maxLength={300}
+              onChange={(e) => setReason(e.target.value)}
+              placeholder="Contoh: internet sekolah mati seharian, absensi dicatat dari buku kelas"
+              className="min-h-20 w-full rounded-lg border border-line bg-surface p-3 text-sm"
+            />
+            {!reasonOk && <p className="mt-1 text-xs text-danger">Isi alasan minimal 5 karakter.</p>}
+          </div>
+        )}
         <p className="text-sm text-ink-muted">
           Siswa yang tidak dipilih tidak dicatat dan tidak otomatis Alpa{unchosen > 0 ? ` (${unchosen} siswa)` : ""}. Catatan yang sudah tersimpan tidak dapat diubah dari halaman ini; perubahan dilakukan lewat Koreksi dengan alasan dan tercatat.
         </p>

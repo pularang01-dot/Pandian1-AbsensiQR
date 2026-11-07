@@ -5,7 +5,7 @@ import { APPROVER_ROLES, type Role } from "@/lib/auth/roles";
 import { requireRole } from "@/lib/auth/session";
 import { createClient } from "@/lib/supabase/server";
 import { sanitizeSearch, friendlyDbError, type ActionState } from "@/lib/validation/common";
-import { classAttendanceSchema, correctionSchema, recordAttendanceSchema, RESULT_MESSAGE, type RpcResult } from "@/lib/validation/attendance";
+import { classAttendanceSchema, backdatedAttendanceSchema, correctionSchema, recordAttendanceSchema, RESULT_MESSAGE, type RpcResult } from "@/lib/validation/attendance";
 import { one } from "@/lib/data/students";
 
 const SCAN_ROLES: Role[] = ["super_admin", "school_admin", "teacher", "operator"];
@@ -127,5 +127,35 @@ export async function recordClassAttendanceAction(input: unknown): Promise<Class
     message: skipped > 0
       ? `${r.inserted ?? 0} catatan tersimpan. ${skipped} siswa sudah tercatat sebelumnya dan tidak diubah.`
       : `${r.inserted ?? 0} catatan absensi tersimpan.`,
+  };
+}
+
+/** Absensi susulan untuk tanggal lampau (khusus admin, alasan wajib). Aturan ditegakkan di basis data dan tercatat di audit. */
+export async function recordBackdatedAttendanceAction(input: unknown): Promise<ClassAttendanceResult> {
+  await requireRole(["super_admin", "school_admin"]);
+  const parsed = backdatedAttendanceSchema.safeParse(input);
+  if (!parsed.success) return { ok: false, message: parsed.error.issues[0]?.message ?? "Data tidak valid." };
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("record_class_attendance_backdated", {
+    p_class: parsed.data.class_id,
+    p_date: parsed.data.date,
+    p_entries: parsed.data.entries.map((e) => ({ student_id: e.student_id, status: e.status, note: e.note ?? null })),
+    p_reason: parsed.data.reason,
+  });
+  if (error) return { ok: false, message: `${friendlyDbError(error)} Data BELUM tersimpan.` };
+  const r = (data ?? {}) as { result?: string; message?: string; inserted?: number; skipped?: unknown[] };
+  if (r.result !== "recorded") return { ok: false, message: `${r.message ?? "Gagal menyimpan."} Data BELUM tersimpan.` };
+  revalidatePath("/attendance");
+  revalidatePath("/attendance/class");
+  revalidatePath("/dashboard");
+  revalidatePath("/activity");
+  const skipped = r.skipped?.length ?? 0;
+  return {
+    ok: true,
+    inserted: r.inserted ?? 0,
+    skipped,
+    message: skipped > 0
+      ? `${r.inserted ?? 0} catatan susulan tersimpan. ${skipped} siswa sudah tercatat sebelumnya dan tidak diubah.`
+      : `${r.inserted ?? 0} catatan susulan tersimpan.`,
   };
 }

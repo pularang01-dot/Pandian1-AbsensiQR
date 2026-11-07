@@ -66,6 +66,14 @@ Beban: pindai beruntun saat jam masuk (misalnya 200 siswa dalam 15 menit).
 - [ ] Admin: dapat memilih kelas lain; guru tidak bisa membuka kelas lain lewat ?class= di alamat.
 - [ ] Dashboard memperlihatkan angka terbaru; entri audit "class_attendance" muncul.
 - [ ] Tampilan ponsel: lima tombol status muat satu baris, mudah ditekan, bilah Simpan di bawah tidak menutupi baris terakhir.
+
+## Absensi susulan
+- [ ] Admin: kolom "Tanggal susulan" muncul; guru tidak melihatnya dan ?tanggal= di alamat diabaikan untuk guru.
+- [ ] Tanggal hari ini, masa depan, atau lebih dari 30 hari lalu tidak dapat dipilih; spanduk kuning "Mengisi absensi susulan untuk ..." muncul untuk tanggal sah.
+- [ ] Simpan tanpa alasan: tombol Simpan nonaktif; dengan alasan: tersimpan, catatan siswa berawalan "Susulan:" dan tanpa jam masuk.
+- [ ] Hari libur atau Minggu: ditolak dengan pesan jelas. Sesi yang sudah ditutup: ditolak dengan arahan ke Koreksi.
+- [ ] Siswa yang pindah kelas: muncul di kelas lama pada tanggal sebelum pindah, tidak di kelas baru.
+- [ ] Menu Aktivitas menampilkan "Mencatat absensi susulan" lengkap dengan alasan.
 - [ ] Antara pukul 06.00-07.00 WIB, "hari ini" di dashboard dan Absen Kelas sudah tanggal hari ini (bukan kemarin).
 
 ## Aktivitas administrasi

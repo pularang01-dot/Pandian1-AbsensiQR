@@ -632,3 +632,154 @@ do $$ declare n0 bigint; n1 bigint; ts0 timestamptz; begin
   perform public.check_('setelah selesai audit kembali aktif', (select count(*) from public.audit_logs) > n1);
   perform public.check_('setelah selesai updated_at kembali otomatis', (select updated_at from public.students where id='50000000-0000-0000-0000-0000000000d1') > '2021-01-01');
 end $$;
+
+-- ============ 018: absen kelas ============
+reset role;
+insert into public.students(id,nis,full_name,is_demo) values
+ ('50000000-0000-0000-0000-0000000000b1','9701','Kelas Uji 1',true),
+ ('50000000-0000-0000-0000-0000000000b2','9702','Kelas Uji 2',true),
+ ('50000000-0000-0000-0000-0000000000b3','9703','Kelas Uji 3',true),
+ ('50000000-0000-0000-0000-0000000000b4','9704','Kelas Uji 4',true);
+insert into public.student_class_assignments(student_id,class_id,academic_year_id) values
+ ('50000000-0000-0000-0000-0000000000b1','c1000000-0000-0000-0000-000000000001','a1000000-0000-0000-0000-000000000000'),
+ ('50000000-0000-0000-0000-0000000000b2','c1000000-0000-0000-0000-000000000001','a1000000-0000-0000-0000-000000000000'),
+ ('50000000-0000-0000-0000-0000000000b3','c1000000-0000-0000-0000-000000000001','a1000000-0000-0000-0000-000000000000'),
+ ('50000000-0000-0000-0000-0000000000b4','c1000000-0000-0000-0000-000000000002','a1000000-0000-0000-0000-000000000000');
+select public.ensure_attendance_session(public.school_today());
+update public.attendance_sessions set status='open' where session_date = public.school_today();
+
+do $$ declare r jsonb; sid uuid; begin
+  perform public.test_as('00000000-0000-0000-0000-000000000005');   -- wali kelas 1A
+  r := public.record_class_attendance('c1000000-0000-0000-0000-000000000001',
+    '[{"student_id":"50000000-0000-0000-0000-0000000000b1","status":"present"},
+      {"student_id":"50000000-0000-0000-0000-0000000000b2","status":"sick","note":"kata orang tua"}]');
+  perform public.check_('wali kelas menyimpan absen kelas', r->>'result'='recorded' and (r->>'inserted')::int=2);
+  perform public.check_('siswa yang tidak dipilih TIDAK otomatis dicatat', (select count(*) from public.attendance_records where student_id='50000000-0000-0000-0000-0000000000b3')=0);
+  perform public.check_('catatan per siswa tersimpan', (select note from public.attendance_records where student_id='50000000-0000-0000-0000-0000000000b2')='kata orang tua');
+  perform public.check_('catatan bawaan terisi untuk catatan kosong', (select note from public.attendance_records where student_id='50000000-0000-0000-0000-0000000000b1') like 'Dicatat guru%');
+  perform public.check_('sumber catatan = manual', (select source from public.attendance_records where student_id='50000000-0000-0000-0000-0000000000b1')='manual');
+
+  r := public.record_class_attendance('c1000000-0000-0000-0000-000000000001',
+    '[{"student_id":"50000000-0000-0000-0000-0000000000b1","status":"unexcused"},
+      {"student_id":"50000000-0000-0000-0000-0000000000b3","status":"late"}]');
+  perform public.check_('catatan yang sudah ada tidak ditimpa', (select status::text from public.attendance_records where student_id='50000000-0000-0000-0000-0000000000b1')='present');
+  perform public.check_('yang sudah ada dilaporkan dilewati', jsonb_array_length(r->'skipped')=1 and (r->>'inserted')::int=1);
+
+  r := public.record_class_attendance('c1000000-0000-0000-0000-000000000002','[{"student_id":"50000000-0000-0000-0000-0000000000b4","status":"present"}]');
+  perform public.check_('guru tak bisa mengabsen kelas tanpa wali atau kelas orang lain', r->>'result'='forbidden');
+
+  r := public.record_class_attendance('c1000000-0000-0000-0000-000000000001','[{"student_id":"50000000-0000-0000-0000-0000000000b4","status":"present"}]');
+  perform public.check_('siswa dari kelas lain ditolak', r->>'result'='invalid');
+
+  r := public.record_class_attendance('c1000000-0000-0000-0000-000000000001','[{"student_id":"50000000-0000-0000-0000-0000000000a0","status":"present"}]');
+  perform public.check_('siswa tak dikenal ditolak', r->>'result'='invalid');
+
+  r := public.record_class_attendance('c1000000-0000-0000-0000-000000000001','[{"student_id":"50000000-0000-0000-0000-0000000000b1","status":"official_activity"}]');
+  perform public.check_('status kegiatan resmi ditolak (lewat dispensasi)', r->>'result'='invalid');
+
+  r := public.record_class_attendance('c1000000-0000-0000-0000-000000000001','[]');
+  perform public.check_('paket kosong ditolak', r->>'result'='invalid');
+end $$;
+reset role;
+delete from public.attendance_records where student_id in ('50000000-0000-0000-0000-0000000000b1','50000000-0000-0000-0000-0000000000b2','50000000-0000-0000-0000-0000000000b3');
+do $$ declare r jsonb; begin
+  perform public.test_as('00000000-0000-0000-0000-000000000005');
+  r := public.record_class_attendance('c1000000-0000-0000-0000-000000000001',
+    '[{"student_id":"50000000-0000-0000-0000-0000000000b1","status":"present"},{"student_id":"50000000-0000-0000-0000-0000000000b4","status":"present"}]');
+  perform public.check_('paket dengan satu baris tak valid tidak menyimpan apa pun', r->>'result'='invalid' and (select count(*) from public.attendance_records where student_id='50000000-0000-0000-0000-0000000000b1')=0);
+  perform public.test_as('00000000-0000-0000-0000-000000000003');
+  r := public.record_class_attendance('c1000000-0000-0000-0000-000000000001','[{"student_id":"50000000-0000-0000-0000-0000000000b1","status":"present"}]');
+  perform public.check_('orang tua tidak bisa mengabsen', r->>'result'='forbidden');
+end $$;
+reset role;
+do $$ declare r jsonb; begin
+  perform public.test_as('00000000-0000-0000-0000-000000000001');   -- admin: kelas mana pun
+  r := public.record_class_attendance('c1000000-0000-0000-0000-000000000002','[{"student_id":"50000000-0000-0000-0000-0000000000b4","status":"unexcused","note":"tanpa kabar"}]');
+  perform public.check_('admin dapat mengabsen kelas mana pun, termasuk Alpa eksplisit', r->>'result'='recorded');
+  perform public.check_('absen kelas tercatat di audit', exists(select 1 from public.audit_logs where action='class_attendance'));
+end $$;
+reset role;
+update public.attendance_sessions set status='closed' where session_date = public.school_today();
+do $$ declare r jsonb; begin
+  perform public.test_as('00000000-0000-0000-0000-000000000005');
+  r := public.record_class_attendance('c1000000-0000-0000-0000-000000000001','[{"student_id":"50000000-0000-0000-0000-0000000000b2","status":"present"}]');
+  perform public.check_('sesi yang sudah ditutup menolak absen kelas', r->>'result'='session_closed');
+end $$;
+reset role;
+
+-- ============ 019: absensi susulan ============
+reset role;
+-- Siswa b1..b3 baru "masuk" hari ini pada fixture; mundurkan awal keanggotaan agar sah pada tanggal lampau.
+update public.student_class_assignments set start_date = public.school_today() - 60
+ where student_id in ('50000000-0000-0000-0000-0000000000b1','50000000-0000-0000-0000-0000000000b2','50000000-0000-0000-0000-0000000000b3');
+create temp table bd(d date);
+insert into bd select public.school_today() - n from generate_series(1,29) n where public.is_school_day(public.school_today() - n) order by n limit 3;
+create temp table bd_non(d date);
+insert into bd_non values (public.school_today()-15);
+delete from bd where d = public.school_today()-15;
+insert into public.school_calendar(calendar_date,kind,description) values (public.school_today()-15,'holiday','Libur uji susulan 2') on conflict do nothing;
+grant select on bd, bd_non to authenticated;
+
+do $$ declare r jsonb; d1 date; d2 date; d3 date; dn date; cid uuid := 'c1000000-0000-0000-0000-000000000001'; begin
+  select d into d1 from (select d, row_number() over (order by d desc) rn from bd) x where rn=1;
+  select d into d2 from (select d, row_number() over (order by d desc) rn from bd) x where rn=2;
+  select d into d3 from (select d, row_number() over (order by d desc) rn from bd) x where rn=3;
+  select d into dn from bd_non limit 1;
+
+  perform public.test_as('00000000-0000-0000-0000-000000000005');   -- wali kelas
+  r := public.record_class_attendance_backdated(cid, d1, '[{"student_id":"50000000-0000-0000-0000-0000000000b1","status":"present"}]', 'internet mati');
+  perform public.check_('guru tidak dapat mengisi tanggal lampau', r->>'result'='forbidden');
+  perform public.test_as('00000000-0000-0000-0000-000000000003');
+  r := public.record_class_attendance_backdated(cid, d1, '[{"student_id":"50000000-0000-0000-0000-0000000000b1","status":"present"}]', 'internet mati');
+  perform public.check_('orang tua tidak dapat mengisi tanggal lampau', r->>'result'='forbidden');
+
+  perform public.test_as('00000000-0000-0000-0000-000000000001');   -- admin
+  r := public.record_class_attendance_backdated(cid, public.school_today(), '[{"student_id":"50000000-0000-0000-0000-0000000000b1","status":"present"}]', 'internet mati');
+  perform public.check_('hari ini ditolak (pakai Absen Kelas biasa)', r->>'result'='invalid');
+  r := public.record_class_attendance_backdated(cid, public.school_today()+1, '[{"student_id":"50000000-0000-0000-0000-0000000000b1","status":"present"}]', 'internet mati');
+  perform public.check_('tanggal masa depan ditolak', r->>'result'='invalid');
+  r := public.record_class_attendance_backdated(cid, public.school_today()-31, '[{"student_id":"50000000-0000-0000-0000-0000000000b1","status":"present"}]', 'internet mati');
+  perform public.check_('lebih dari 30 hari ditolak', r->>'result'='invalid');
+  if dn is not null then
+    r := public.record_class_attendance_backdated(cid, dn, '[{"student_id":"50000000-0000-0000-0000-0000000000b1","status":"present"}]', 'internet mati');
+    perform public.check_('hari non-sekolah ditolak', r->>'result'='not_school_day');
+  end if;
+  r := public.record_class_attendance_backdated(cid, d1, '[{"student_id":"50000000-0000-0000-0000-0000000000b1","status":"present"}]', '');
+  perform public.check_('alasan kosong ditolak', r->>'result'='invalid');
+  r := public.record_class_attendance_backdated(cid, d1, '[{"student_id":"50000000-0000-0000-0000-0000000000b1","status":"present"}]', 'ok');
+  perform public.check_('alasan terlalu pendek ditolak', r->>'result'='invalid');
+  r := public.record_class_attendance_backdated(cid, d1, '[{"student_id":"50000000-0000-0000-0000-0000000000b4","status":"present"}]', 'internet mati');
+  perform public.check_('siswa kelas lain ditolak', r->>'result'='invalid');
+  r := public.record_class_attendance_backdated(cid, d1, '[{"student_id":"50000000-0000-0000-0000-0000000000b1","status":"present"},{"student_id":"50000000-0000-0000-0000-0000000000b4","status":"present"}]', 'internet mati');
+  perform public.check_('paket dengan baris tak valid tidak menyimpan apa pun', r->>'result'='invalid'
+    and (select count(*) from public.attendance_records where student_id='50000000-0000-0000-0000-0000000000b1')=0);
+
+  r := public.record_class_attendance_backdated(cid, d1,
+    '[{"student_id":"50000000-0000-0000-0000-0000000000b1","status":"present"},{"student_id":"50000000-0000-0000-0000-0000000000b2","status":"sick","note":"demam"},{"student_id":"50000000-0000-0000-0000-0000000000b3","status":"unexcused"}]',
+    'internet sekolah mati seharian');
+  perform public.check_('admin menyimpan absensi susulan', r->>'result'='recorded' and (r->>'inserted')::int=3);
+  perform public.check_('catatan susulan tanpa jam masuk dan bersumber manual', (select count(*) from public.attendance_records ar join public.attendance_sessions s on s.id=ar.session_id
+    where s.session_date=d1 and ar.checked_in_at is null and ar.source='manual' and ar.note like 'Susulan:%')=3);
+  perform public.check_('catatan siswa memuat alasan atau catatan sendiri', (select note from public.attendance_records ar join public.attendance_sessions s on s.id=ar.session_id where s.session_date=d1 and ar.student_id='50000000-0000-0000-0000-0000000000b2') = 'Susulan: demam');
+  perform public.check_('audit susulan memuat alasan', exists(select 1 from public.audit_logs where action='class_attendance_backdated' and reason='internet sekolah mati seharian'));
+
+  r := public.record_class_attendance_backdated(cid, d1, '[{"student_id":"50000000-0000-0000-0000-0000000000b1","status":"unexcused"}]', 'coba timpa');
+  perform public.check_('catatan yang sudah ada tidak ditimpa', (r->>'inserted')::int=0 and jsonb_array_length(r->'skipped')=1
+    and (select ar.status::text from public.attendance_records ar join public.attendance_sessions s on s.id=ar.session_id where s.session_date=d1 and ar.student_id='50000000-0000-0000-0000-0000000000b1')='present');
+
+  -- keanggotaan pada tanggal itu
+  reset role;
+  update public.student_class_assignments set start_date = d2 + 1 where student_id='50000000-0000-0000-0000-0000000000b3';
+  perform public.test_as('00000000-0000-0000-0000-000000000001');
+  r := public.record_class_attendance_backdated(cid, d2, '[{"student_id":"50000000-0000-0000-0000-0000000000b3","status":"present"}]', 'internet mati');
+  perform public.check_('siswa yang belum menjadi anggota pada tanggal itu ditolak', r->>'result'='invalid');
+
+  -- sesi ditutup
+  reset role;
+  perform public.ensure_attendance_session(d3);
+  update public.attendance_sessions set status='closed' where session_date=d3;
+  perform public.test_as('00000000-0000-0000-0000-000000000001');
+  r := public.record_class_attendance_backdated(cid, d3, '[{"student_id":"50000000-0000-0000-0000-0000000000b1","status":"present"}]', 'internet mati');
+  perform public.check_('sesi tertutup menolak absensi susulan', r->>'result'='session_closed');
+end $$;
+reset role;
