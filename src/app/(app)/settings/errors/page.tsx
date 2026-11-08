@@ -53,7 +53,7 @@ export default async function ErrorsPage() {
           <li>Daftar kosong berarti tidak ada kesalahan teknis yang tercatat. Ini normal dan baik.</li>
           <li>Satu masalah yang berulang digabung menjadi satu baris dengan jumlah kejadian.</li>
           <li>Hanya pesan teknis yang disimpan. Email, nomor panjang, dan id disamarkan; isi data siswa tidak disimpan.</li>
-          <li>Bila ada yang muncul terus-menerus, salin pesan dan kode kesalahannya lalu laporkan ke pengembang lewat tombol WhatsApp. Setelah ditangani, tekan "Tandai selesai".</li>
+          <li>Bila ada yang muncul terus-menerus, salin pesan dan kode kesalahannya lalu laporkan ke pengembang lewat tombol WhatsApp. Setelah ditangani, tekan <span className="font-medium">Tandai selesai</span>.</li>
           <li>Catatan ini hanya mencakup kesalahan dalam aplikasi. Gangguan di Supabase atau Vercel sendiri dilihat di dashboard layanan tersebut.</li>
         </ul>
       </section>
@@ -67,7 +67,7 @@ export default async function ErrorsPage() {
         <ol className="mt-4 list-decimal space-y-1 pl-5 text-sm text-ink-muted">
           <li>Pada error yang bermasalah, tekan <span className="font-medium text-ink">Laporkan lewat WhatsApp</span>. WhatsApp terbuka dengan pesan yang sudah terisi, lalu tekan kirim.</li>
           <li>Bila WhatsApp tidak terbuka (misalnya di komputer tanpa WhatsApp), tekan <span className="font-medium text-ink">Salin laporan</span>, buka WhatsApp, pilih kontak pengembang, tempel (Ctrl+V di komputer, tekan lama lalu Tempel di HP), lalu kirim.</li>
-          <li>Setelah masalah selesai ditangani, tekan "Tandai selesai".</li>
+          <li>Setelah masalah selesai ditangani, tekan <span className="font-medium">Tandai selesai</span>.</li>
         </ol>
         <p className="mt-3 text-xs text-ink-muted">Laporan hanya berisi pesan teknis yang sudah disamarkan. Periksa isinya sebelum mengirim; jangan menambahkan kata sandi atau data pribadi siswa.</p>
       </section>

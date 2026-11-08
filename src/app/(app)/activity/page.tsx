@@ -9,7 +9,7 @@ import { Input, Select } from "@/components/ui/field";
 import { Pagination, PAGE_SIZE, parsePage } from "@/components/ui/pagination";
 import { asDate, asUuid } from "@/lib/data/lookups";
 import { formatTanggal, formatWaktu } from "@/lib/utils";
-import { CATEGORIES, NOISE_TABLES, collectIds, describe, safeData, type AuditRow, type CategoryKey, type Names } from "@/lib/audit/describe";
+import { CATEGORIES, NOISE_TABLES, collectIds, describe, safeData, type AuditRow, type Names } from "@/lib/audit/describe";
 
 export const metadata: Metadata = { title: "Aktivitas Administrasi" };
 export const dynamic = "force-dynamic";
