@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { Database, CalendarClock, CalendarDays, GraduationCap, ShieldCheck, UserX, Users } from "lucide-react";
+import { Bug, Database, CalendarClock, CalendarDays, GraduationCap, ShieldCheck, UserX, Users } from "lucide-react";
 import { ADMIN_ROLES } from "@/lib/auth/roles";
 import { requireRole } from "@/lib/auth/session";
 import { PageHeader } from "@/components/ui/page-header";
@@ -19,6 +19,7 @@ const LINKS = [
   { href: "/settings/attendance", title: "Aturan absensi", desc: "Jam masuk, batas terlambat, penutupan, hari sekolah.", icon: CalendarClock },
   { href: "/settings/hygiene", title: "Kebersihan akun", desc: "Penonaktifan otomatis akun orang tua tanpa anak aktif dan akun tidak terpakai.", icon: UserX },
   { href: "/settings/backup", title: "Pencadangan data", desc: "Unduh cadangan terenkripsi seluruh data. Hanya super admin.", icon: Database, superOnly: true },
+  { href: "/settings/errors", title: "Pemantauan error", desc: "Catatan kesalahan teknis aplikasi agar masalah terdeteksi tanpa menunggu laporan. Hanya super admin.", icon: Bug, superOnly: true },
   { href: "/settings/roles", title: "Peran dan hak akses", desc: "Ringkasan wewenang setiap peran.", icon: ShieldCheck },
 ];
 

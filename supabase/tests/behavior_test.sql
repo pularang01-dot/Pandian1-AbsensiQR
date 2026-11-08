@@ -783,3 +783,50 @@ do $$ declare r jsonb; d1 date; d2 date; d3 date; dn date; cid uuid := 'c1000000
   perform public.check_('sesi tertutup menolak absensi susulan', r->>'result'='session_closed');
 end $$;
 reset role;
+
+-- ============ 020: pemantauan error ============
+reset role;
+do $$ declare r record; n int; begin
+  perform public.test_as('00000000-0000-0000-0000-000000000003');   -- orang tua yang melihat error
+  perform public.log_app_error('client','/parent/children/50000000-0000-0000-0000-0000000000b1','Gagal untuk budi@sekolah.id NIS 1234567890','dg1','stack');
+  perform public.log_app_error('client','/parent/children/50000000-0000-0000-0000-0000000000b2','Gagal untuk budi@sekolah.id NIS 1234567890','dg1','stack');
+  reset role;
+  select * into r from public.app_errors order by first_seen desc limit 1;
+  perform public.check_('pesan error disamarkan (email dan angka panjang)', r.message not like '%@%' and r.message not like '%1234567890%' and r.message like '%[email]%');
+  perform public.check_('id di alamat halaman disamarkan', r.route like '%[id]%' and r.route not like '%50000000%');
+  perform public.check_('kejadian sama digabung dan dihitung', r.occurrences = 2 and (select count(*) from public.app_errors)=1);
+  perform public.test_as('00000000-0000-0000-0000-000000000003');
+  select count(*) into n from public.app_errors;
+  perform public.check_('orang tua tidak dapat membaca daftar error', n = 0);
+  perform public.test_as('00000000-0000-0000-0000-000000000001');
+  select count(*) into n from public.app_errors;
+  perform public.check_('admin sekolah (bukan super admin) tidak membaca daftar error', n = 0 or public.has_role('super_admin'));
+end $$;
+reset role;
+do $$ declare n int; eid uuid; ok boolean; begin
+  perform public.test_as('00000000-0000-0000-0000-000000000003');
+  begin insert into public.app_errors(fingerprint,source,message) values ('x','client','x'); ok := true; exception when others then ok := false; end;
+  perform public.check_('pengguna tidak dapat menulis langsung ke tabel error', not ok);
+  begin perform public.resolve_app_error(gen_random_uuid()); ok := true; exception when others then ok := false; end;
+  perform public.check_('pengguna biasa tidak dapat menandai selesai', not ok);
+  reset role;
+  select id into eid from public.app_errors limit 1;
+  insert into public.user_roles(user_id, role) select '00000000-0000-0000-0000-000000000001','super_admin' where not exists (select 1 from public.user_roles where user_id='00000000-0000-0000-0000-000000000001' and role='super_admin');
+  perform public.test_as('00000000-0000-0000-0000-000000000001');
+  select count(*) into n from public.app_errors;
+  perform public.check_('super admin dapat membaca daftar error', n = 1);
+  perform public.resolve_app_error(eid);
+  perform public.check_('ditandai selesai', (select resolved_at is not null from public.app_errors where id = eid));
+  reset role;
+  perform public.test_as('00000000-0000-0000-0000-000000000003');
+  perform public.log_app_error('server','/x','Masalah baru','d',null);
+  perform public.log_app_error('server','/x','Masalah baru','d',null);
+  reset role;
+  perform public.check_('error berulang membuka kembali yang sudah selesai atau menambah hitungan', (select occurrences from public.app_errors where message='Masalah baru')=2);
+  -- pelindung banjir
+  perform public.test_as('00000000-0000-0000-0000-000000000003');
+  for i in 1..80 loop perform public.log_app_error('client','/f'||i,'banjir '||i,null,null); end loop;
+  reset role;
+  perform public.check_('pelindung banjir membatasi jenis error baru per menit', (select count(*) from public.app_errors where message like 'banjir%') <= 60);
+end $$;
+reset role;

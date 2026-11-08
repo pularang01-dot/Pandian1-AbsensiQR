@@ -4,7 +4,7 @@ Sistem absensi, izin, dispensasi, pulang lebih awal, dan pelaporan untuk SDN Pan
 
 Teknologi: Next.js 15 (App Router), React 19, TypeScript, Tailwind CSS, Supabase (PostgreSQL, Auth, RLS, Storage privat), Zod, React Hook Form, zxing (pemindai QR), recharts, jsPDF dan xlsx (ekspor).
 
-> Status verifikasi yang jujur: migrasi basis data dan aturan perilaku (RLS, RPC) sudah diuji pada PostgreSQL 16 lokal dengan stub Supabase (225 pemeriksaan lulus). Kode aplikasi baru melewati pemeriksaan sintaks dan impor. `npm run build`, `lint`, `typecheck`, dan pengujian peramban BELUM dijalankan karena dependensi belum dipasang. Lihat docs/TESTING_CHECKLIST.md dan jalankan sebelum dipakai.
+> Status verifikasi yang jujur: migrasi basis data dan aturan perilaku (RLS, RPC) sudah diuji pada PostgreSQL 16 lokal dengan stub Supabase (236 pemeriksaan lulus). Kode aplikasi baru melewati pemeriksaan sintaks dan impor. `npm run build`, `lint`, `typecheck`, dan pengujian peramban BELUM dijalankan karena dependensi belum dipasang. Lihat docs/TESTING_CHECKLIST.md dan jalankan sebelum dipakai.
 
 ## Modul
 
@@ -28,7 +28,7 @@ npm install
 
 1. Buat proyek di https://supabase.com. Catat Project URL, anon key, dan service-role key (Project Settings > API).
 2. Buka SQL Editor, jalankan berkas berikut BERURUTAN, satu per satu, dan pastikan tiap berkas selesai tanpa galat:
-   `supabase/migrations/001_schema.sql` sampai `019_backdated_attendance.sql`.
+   `supabase/migrations/001_schema.sql` sampai `020_error_monitoring.sql`.
    (Atau dengan CLI: `supabase db push` pada proyek yang sudah di-link.)
 3. Authentication > Providers: aktifkan Email. Nonaktifkan pendaftaran mandiri (Sign ups) agar akun hanya dibuat administrator.
 4. Authentication > URL Configuration: Site URL = alamat aplikasi; tambahkan `<alamat>/auth/callback` ke Redirect URLs.
@@ -99,3 +99,6 @@ Lambang sekolah: `public/logo.png` (tampil di halaman masuk dan menu samping), i
 
 ## Aktivitas administrasi
 Halaman `/activity` (super admin, admin sekolah, kepala sekolah) menampilkan jejak audit dalam kalimat Indonesia dengan filter dan rincian sebelum-sesudah. Nilai rahasia disembunyikan. Pembaruan `utils.ts`: tanggal dan jam kini selalu menurut zona waktu sekolah (Asia/Jakarta), bukan zona server.
+
+## Pemantauan error
+Error aplikasi dicatat otomatis ke tabel `app_errors` (migrasi 020) tanpa layanan pihak ketiga: sisi server lewat `src/instrumentation.ts`, sisi peramban lewat `error.tsx`. Hanya pesan teknis yang disamarkan (email, angka panjang, id) yang disimpan, kejadian sama digabung, maksimal 500 baris. Super admin melihatnya di Pengaturan > Pemantauan error dan lewat peringatan merah di dashboard. Tidak menggantikan dashboard Supabase/Vercel untuk gangguan layanan itu sendiri.

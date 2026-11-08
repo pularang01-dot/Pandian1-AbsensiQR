@@ -31,6 +31,7 @@ export const APPROVER_ROLES: Role[] = ["super_admin", "school_admin", "principal
 export const ROUTE_ACCESS: { prefix: string; roles: Role[] }[] = [
   { prefix: "/parent", roles: ["parent"] },
   { prefix: "/settings/backup", roles: ["super_admin"] },
+  { prefix: "/settings/errors", roles: ["super_admin"] },
   { prefix: "/settings", roles: ["super_admin", "school_admin"] },
   { prefix: "/students/new", roles: ADMIN_ROLES },
   { prefix: "/students", roles: STAFF_ROLES },

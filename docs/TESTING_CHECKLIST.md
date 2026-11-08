@@ -85,3 +85,11 @@ Beban: pindai beruntun saat jam masuk (misalnya 200 siswa dalam 15 menit).
 - [ ] Rincian tidak pernah menampilkan token QR atau kata sandi (tertulis "(disembunyikan)").
 - [ ] Link "Lihat semua" di kartu dashboard membuka halaman ini.
 - [ ] Jam di Data absensi dan dashboard sekarang menurut WIB (pindai pukul 06.45 tampil 06:45, bukan 23:45).
+
+## Pemantauan error
+- [ ] Super admin: Pengaturan menampilkan kartu "Pemantauan error"; admin sekolah biasa tidak melihatnya dan /settings/errors ditolak.
+- [ ] Halaman awal menampilkan "Tidak ada error" saat bersih.
+- [ ] Uji sengaja: buka alamat dengan id yang tidak ada di halaman yang melempar error (atau matikan internet lalu muat) lalu cek bahwa baris muncul dengan jumlah kejadian naik saat diulang.
+- [ ] Pesan di daftar tidak memuat email, NIS, atau id lengkap.
+- [ ] Tombol "Tandai selesai" dan "Tandai semua selesai" bekerja; peringatan merah di dashboard hilang.
+- [ ] Layar "Terjadi kesalahan" menampilkan kode kesalahan bila ada.

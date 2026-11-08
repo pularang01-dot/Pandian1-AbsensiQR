@@ -64,6 +64,16 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
     } catch { backup = null; }
   }
 
+  // Peringatan error teknis: hanya super admin. Kegagalan di sini tidak boleh merusak dashboard.
+  let openErrors = 0;
+  if (user.roles.includes("super_admin")) {
+    try {
+      const { count } = await supabase.from("app_errors").select("id", { count: "exact", head: true })
+        .is("resolved_at", null).gte("last_seen", new Date(Date.now() - 7 * 86400000).toISOString());
+      openErrors = count ?? 0;
+    } catch { openErrors = 0; }
+  }
+
   let recentQuery = supabase
     .from("attendance_records")
     .select("id, status, checked_in_at, created_at, source, students(full_name), attendance_sessions!inner(session_date)")
@@ -115,6 +125,16 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
             </span>
           </p>
           <Link href="/settings/backup" className="inline-flex h-11 items-center justify-center rounded-lg bg-brand px-4 text-sm font-medium text-white hover:bg-[#2b68bd]">Buat cadangan</Link>
+        </div>
+      )}
+
+      {openErrors > 0 && (
+        <div role="alert" className="mb-6 flex flex-col gap-3 rounded-lg border border-danger/40 bg-danger/10 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+          <p className="flex items-start gap-2 text-sm">
+            <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-danger" aria-hidden />
+            <span><span className="font-semibold">Ada {openErrors} kesalahan teknis belum ditangani </span>dalam 7 hari terakhir.</span>
+          </p>
+          <Link href="/settings/errors" className="inline-flex h-11 items-center justify-center rounded-lg bg-brand px-4 text-sm font-medium text-white hover:bg-[#2b68bd]">Lihat</Link>
         </div>
       )}
 

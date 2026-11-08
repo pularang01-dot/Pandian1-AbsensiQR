@@ -54,3 +54,6 @@ Belum ada pembatasan laju (rate limit) tingkat aplikasi selain bawaan Supabase A
 
 ## Pencadangan dan pemulihan
 Cadangan hanya dibuat super admin lewat rute server, dienkripsi AES-256-GCM dengan kata sandi yang tidak disimpan, dan tercatat di jejak audit. Pemulihan hanya lewat skrip pemilik memakai kunci service-role di komputer pemilik. Mode pemulihan (migrasi 017) hanya dapat dinyalakan service-role, tertutup dari pengguna, dan kedaluwarsa otomatis 3 jam. Lihat docs/BACKUP_RESTORE_SOP.md.
+
+## Pemantauan error
+Pencatat error bawaan menyimpan hanya pesan teknis singkat, halaman, dan jumlah kejadian. Email, deretan angka 6 digit atau lebih, dan id disamarkan di basis data sebelum disimpan; tidak ada isi formulir atau data siswa. Hanya super admin dapat membaca. Tidak ada data keluar ke layanan pihak ketiga. Tabel tidak ikut cadangan.
