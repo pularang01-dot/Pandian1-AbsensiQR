@@ -920,3 +920,17 @@ do $$ declare r jsonb; begin
   perform public.check_('tahun ajaran yang sudah tidak ada: not_found', r->>'result'='not_found');
 end $$;
 reset role;
+
+-- ============ 024: nonaktifkan tahun ajaran ============
+reset role;
+update public.academic_years set is_active = false where is_active;
+insert into public.academic_years(id,name,start_date,end_date,is_active) values ('a1000000-0000-0000-0000-0000000000f4','2094/2095','2094-07-01','2095-06-30',true);
+do $$ begin
+  perform public.test_as('00000000-0000-0000-0000-000000000005');
+  perform public.expect_fail('guru tak bisa menonaktifkan tahun ajaran', $q$ select public.deactivate_academic_year('a1000000-0000-0000-0000-0000000000f4') $q$);
+  perform public.test_as('00000000-0000-0000-0000-000000000001');
+  perform public.deactivate_academic_year('a1000000-0000-0000-0000-0000000000f4');
+  perform public.check_('admin dapat menonaktifkan tahun ajaran aktif', not (select is_active from public.academic_years where id='a1000000-0000-0000-0000-0000000000f4'));
+  perform public.expect_fail('menonaktifkan yang sudah nonaktif ditolak', $q$ select public.deactivate_academic_year('a1000000-0000-0000-0000-0000000000f4') $q$);
+end $$;
+reset role;

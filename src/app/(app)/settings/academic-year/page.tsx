@@ -6,6 +6,7 @@ import { PageHeader } from "@/components/ui/page-header";
 import { Field, Input } from "@/components/ui/field";
 import { SimpleForm } from "@/components/settings/simple-form";
 import { ConfirmAction } from "@/components/settings/row-action";
+import { EditYearButton } from "@/components/settings/edit-year-button";
 import { DeleteYearDialog } from "@/components/settings/delete-year-dialog";
 import { formatTanggal } from "@/lib/utils";
 import { createYearAction, yearTransitionAction } from "../actions";
@@ -31,8 +32,10 @@ export default async function AcademicYearPage() {
                     <p className="font-medium">{y.name} <span className="ml-1 rounded-full border border-line bg-canvas px-2 py-0.5 text-xs">{y.is_active ? "Aktif" : y.is_archived ? "Diarsipkan" : "Belum aktif"}</span></p>
                     <p className="tabular text-xs text-ink-muted">{formatTanggal(y.start_date, "d MMM yyyy")} s.d. {formatTanggal(y.end_date, "d MMM yyyy")}</p>
                   </div>
-                  <div className="flex gap-2">
+                  <div className="flex flex-wrap gap-2">
+                    {!y.is_archived && <EditYearButton id={y.id} name={y.name} startDate={y.start_date} endDate={y.end_date} />}
                     {!y.is_active && !y.is_archived && <ConfirmAction label="Aktifkan" title={`Aktifkan ${y.name}?`} description="Tahun ajaran aktif yang sekarang akan dinonaktifkan." confirmLabel="Aktifkan" run={yearTransitionAction.bind(null, y.id, "activate")} />}
+                    {y.is_active && <ConfirmAction label="Nonaktifkan" title={`Nonaktifkan ${y.name}?`} description="Data tidak berubah. Selama tidak ada tahun ajaran aktif, impor siswa dan pilihan bawaan meminta Anda mengaktifkan satu tahun ajaran lebih dulu." confirmLabel="Nonaktifkan" danger run={yearTransitionAction.bind(null, y.id, "deactivate")} />}
                     {!y.is_active && !y.is_archived && <ConfirmAction label="Arsipkan" title={`Arsipkan ${y.name}?`} description="Tahun ajaran terarsip tidak dapat diaktifkan lagi. Data kelas dan absensi tetap tersimpan." confirmLabel="Arsipkan" danger run={yearTransitionAction.bind(null, y.id, "archive")} />}
                     {!y.is_active && <DeleteYearDialog yearId={y.id} name={y.name} />}
                   </div>

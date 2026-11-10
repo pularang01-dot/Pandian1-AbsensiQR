@@ -53,14 +53,14 @@ export async function createYearAction(_p: ActionState, fd: FormData): Promise<A
   return { ok: true, message: "Tahun ajaran dibuat. Aktifkan bila sudah waktunya." };
 }
 
-export async function yearTransitionAction(id: string, op: "activate" | "archive"): Promise<ActionState> {
+export async function yearTransitionAction(id: string, op: "activate" | "deactivate" | "archive"): Promise<ActionState> {
   await requireRole(ADMIN_ROLES);
   if (!/^[0-9a-f-]{36}$/i.test(id)) return { ok: false, message: "Data tidak valid." };
   const supabase = await createClient();
-  const { error } = await supabase.rpc(op === "activate" ? "activate_academic_year" : "archive_academic_year", { p_id: id });
+  const { error } = await supabase.rpc(op === "activate" ? "activate_academic_year" : op === "deactivate" ? "deactivate_academic_year" : "archive_academic_year", { p_id: id });
   if (error) return { ok: false, message: friendlyDbError(error) };
   revalidatePath("/settings/academic-year");
-  return { ok: true, message: op === "activate" ? "Tahun ajaran diaktifkan." : "Tahun ajaran diarsipkan. Datanya tetap tersimpan." };
+  return { ok: true, message: op === "activate" ? "Tahun ajaran diaktifkan." : op === "deactivate" ? "Tahun ajaran dinonaktifkan. Datanya tetap tersimpan." : "Tahun ajaran diarsipkan. Datanya tetap tersimpan." };
 }
 
 export async function addCalendarAction(_p: ActionState, fd: FormData): Promise<ActionState> {
@@ -130,4 +130,23 @@ export async function deleteYearAction(id: string, confirm: string): Promise<Del
   revalidatePath("/classes");
   revalidatePath("/dashboard");
   return { ok: true, name: d.name, message: `Tahun ajaran ${d.name} dihapus.` };
+}
+
+/** Mengubah nama dan tanggal tahun ajaran (misalnya salah isi tanggal). Tahun ajaran yang diarsipkan tidak dapat diubah. Tercatat di audit. */
+export async function updateYearAction(_p: ActionState, fd: FormData): Promise<ActionState> {
+  await requireRole(ADMIN_ROLES);
+  const id = String(fd.get("id") ?? "");
+  if (!/^[0-9a-f-]{36}$/i.test(id)) return { ok: false, message: "Data tidak valid." };
+  const parsed = yearSchema.safeParse({ name: fd.get("name") ?? "", start_date: fd.get("start_date") ?? "", end_date: fd.get("end_date") ?? "" });
+  if (!parsed.success) return { ok: false, fieldErrors: zodFieldErrors(parsed.error) };
+  const supabase = await createClient();
+  const { data, error } = await supabase.from("academic_years").update(parsed.data).eq("id", id).eq("is_archived", false).select("id");
+  if (error) {
+    if (error.code === "23505") return { ok: false, fieldErrors: { name: "Tahun ajaran dengan nama itu sudah ada." } };
+    return { ok: false, message: friendlyDbError(error) };
+  }
+  if (!data || data.length === 0) return { ok: false, message: "Tahun ajaran tidak ditemukan atau sudah diarsipkan sehingga tidak dapat diubah." };
+  revalidatePath("/settings/academic-year");
+  revalidatePath("/classes");
+  return { ok: true, message: "Tahun ajaran diperbarui." };
 }

@@ -21,6 +21,8 @@ export function friendlyDbError(error: { code?: string; message?: string } | nul
   const msg = error.message ?? "";
   // Pesan dari fungsi database kita (RAISE EXCEPTION) sudah berbahasa Indonesia dan aman ditampilkan.
   if (error.code === "P0001") return msg;
+  // Fungsi database belum ada: migrasi terbaru belum dijalankan di Supabase.
+  if (error.code === "PGRST202" || error.code === "42883" || /could not find the function|schema cache/i.test(msg)) return "Fitur ini belum aktif di database. Jalankan berkas migrasi terbaru di Supabase SQL Editor, lalu coba lagi.";
   if (error.code === "42501" || /row-level security|permission denied/i.test(msg)) return "Anda tidak berwenang melakukan tindakan ini.";
   if (error.code === "23505") return "Data yang sama sudah ada.";
   if (error.code === "23503") return "Data terkait tidak ditemukan.";
