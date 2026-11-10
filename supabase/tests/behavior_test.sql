@@ -881,3 +881,42 @@ do $$ declare r jsonb; begin
   perform public.check_('kelas yang sudah tidak ada dilaporkan not_found', r->>'result'='not_found');
 end $$;
 reset role;
+
+-- ============ 023: hapus tahun ajaran ============
+reset role;
+insert into public.academic_years(id,name,start_date,end_date,is_active) values
+ ('a1000000-0000-0000-0000-0000000000f1','2090/2091','2090-07-01','2091-06-30',false),
+ ('a1000000-0000-0000-0000-0000000000f2','2092/2093','2092-07-01','2093-06-30',false);
+insert into public.classes(id,name,academic_year_id,grade_level,is_active) values
+ ('c1000000-0000-0000-0000-0000000000f1','Kosong 1','a1000000-0000-0000-0000-0000000000f1',1,true),
+ ('c1000000-0000-0000-0000-0000000000f2','Kosong 2','a1000000-0000-0000-0000-0000000000f1',2,true),
+ ('c1000000-0000-0000-0000-0000000000f3','Berisi','a1000000-0000-0000-0000-0000000000f2',1,true);
+insert into public.students(id,nis,full_name,is_demo) values ('50000000-0000-0000-0000-0000000000e8','9804','Tahun Hapus Uji',true);
+insert into public.student_class_assignments(student_id,class_id,academic_year_id) values ('50000000-0000-0000-0000-0000000000e8','c1000000-0000-0000-0000-0000000000f3','a1000000-0000-0000-0000-0000000000f2');
+do $$ declare r jsonb; begin
+  perform public.test_as('00000000-0000-0000-0000-000000000005');
+  perform public.expect_fail('guru tak bisa menghapus tahun ajaran', $q$ select public.delete_academic_year('a1000000-0000-0000-0000-0000000000f1','HAPUS') $q$);
+  perform public.test_as('00000000-0000-0000-0000-000000000001');
+  reset role;
+  update public.academic_years set is_active = false where is_active;
+  update public.academic_years set is_active = true where id='a1000000-0000-0000-0000-0000000000f2';
+  perform public.test_as('00000000-0000-0000-0000-000000000001');
+  r := public.delete_academic_year('a1000000-0000-0000-0000-0000000000f2','',true);
+  perform public.check_('tahun ajaran aktif tidak dapat dihapus', r->>'result'='protected' and (r->'reasons')::text like '%aktif%');
+  reset role;
+  update public.academic_years set is_active = false where id='a1000000-0000-0000-0000-0000000000f2';
+  perform public.test_as('00000000-0000-0000-0000-000000000001');
+  r := public.delete_academic_year('a1000000-0000-0000-0000-0000000000f2','HAPUS');
+  perform public.check_('tahun ajaran dengan kelas berisi dilindungi', r->>'result'='protected' and exists(select 1 from public.academic_years where id='a1000000-0000-0000-0000-0000000000f2'));
+  r := public.delete_academic_year('a1000000-0000-0000-0000-0000000000f1','',true);
+  perform public.check_('pratinjau: kelas kosong dihitung dan tidak ada yang berubah', r->>'result'='deletable' and (r->>'empty_classes')::int=2 and (select count(*) from public.classes where academic_year_id='a1000000-0000-0000-0000-0000000000f1')=2);
+  perform public.expect_fail('hapus tahun ajaran tanpa kata HAPUS ditolak', $q$ select public.delete_academic_year('a1000000-0000-0000-0000-0000000000f1','x') $q$);
+  r := public.delete_academic_year('a1000000-0000-0000-0000-0000000000f1','HAPUS');
+  perform public.check_('tahun ajaran dengan kelas kosong terhapus bersama kelasnya', r->>'result'='deleted' and (r->>'classes_deleted')::int=2
+    and not exists(select 1 from public.academic_years where id='a1000000-0000-0000-0000-0000000000f1')
+    and not exists(select 1 from public.classes where academic_year_id='a1000000-0000-0000-0000-0000000000f1'));
+  perform public.check_('penghapusan tahun ajaran tercatat di audit', exists(select 1 from public.audit_logs where entity_table='academic_years' and action='delete'));
+  r := public.delete_academic_year('a1000000-0000-0000-0000-0000000000f1','HAPUS');
+  perform public.check_('tahun ajaran yang sudah tidak ada: not_found', r->>'result'='not_found');
+end $$;
+reset role;

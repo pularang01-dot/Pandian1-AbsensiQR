@@ -101,3 +101,33 @@ export async function runHygieneNowAction(): Promise<ActionState> {
   const total = Number(d.orphan_parents ?? 0) + Number(d.stale_accounts ?? 0);
   return { ok: true, message: total > 0 ? `${d.orphan_parents ?? 0} akun orang tua dan ${d.stale_accounts ?? 0} akun tidak terpakai dinonaktifkan.` : "Tidak ada akun yang perlu dinonaktifkan." };
 }
+
+export type DeleteYearResult = { ok: boolean; deletable?: boolean; name?: string; emptyClasses?: number; reasons?: string[]; message?: string };
+
+/** Pratinjau penghapusan tahun ajaran: tidak mengubah apa pun. */
+export async function previewDeleteYearAction(id: string): Promise<DeleteYearResult> {
+  await requireRole(ADMIN_ROLES);
+  if (!/^[0-9a-f-]{36}$/i.test(id)) return { ok: false, message: "Data tidak valid." };
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("delete_academic_year", { p_year: id, p_confirm: "", p_dry: true });
+  if (error) return { ok: false, message: friendlyDbError(error) };
+  const d = (data ?? {}) as { result?: string; name?: string; empty_classes?: number; reasons?: string[]; message?: string };
+  if (d.result === "deletable") return { ok: true, deletable: true, name: d.name, emptyClasses: d.empty_classes ?? 0 };
+  if (d.result === "protected") return { ok: true, deletable: false, name: d.name, reasons: d.reasons ?? [], message: d.message };
+  return { ok: false, message: d.message ?? "Tahun ajaran tidak dapat diperiksa." };
+}
+
+export async function deleteYearAction(id: string, confirm: string): Promise<DeleteYearResult> {
+  await requireRole(ADMIN_ROLES);
+  if (confirm !== "HAPUS") return { ok: false, message: "Ketik HAPUS (huruf besar) untuk melanjutkan." };
+  if (!/^[0-9a-f-]{36}$/i.test(id)) return { ok: false, message: "Data tidak valid." };
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("delete_academic_year", { p_year: id, p_confirm: confirm, p_dry: false });
+  if (error) return { ok: false, message: `${friendlyDbError(error)} Tidak ada data yang dihapus.` };
+  const d = (data ?? {}) as { result?: string; name?: string; message?: string };
+  if (d.result !== "deleted") return { ok: false, message: `${d.message ?? "Tahun ajaran tidak dapat dihapus."} Tidak ada data yang dihapus.` };
+  revalidatePath("/settings/academic-year");
+  revalidatePath("/classes");
+  revalidatePath("/dashboard");
+  return { ok: true, name: d.name, message: `Tahun ajaran ${d.name} dihapus.` };
+}

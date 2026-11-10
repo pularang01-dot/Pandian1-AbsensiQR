@@ -6,6 +6,7 @@ import { PageHeader } from "@/components/ui/page-header";
 import { Field, Input } from "@/components/ui/field";
 import { SimpleForm } from "@/components/settings/simple-form";
 import { ConfirmAction } from "@/components/settings/row-action";
+import { DeleteYearDialog } from "@/components/settings/delete-year-dialog";
 import { formatTanggal } from "@/lib/utils";
 import { createYearAction, yearTransitionAction } from "../actions";
 
@@ -18,7 +19,7 @@ export default async function AcademicYearPage() {
   const { data } = await supabase.from("academic_years").select("id, name, start_date, end_date, is_active, is_archived").order("start_date", { ascending: false });
   return (
     <>
-      <PageHeader title="Tahun ajaran" description="Hanya satu tahun ajaran yang aktif. Mengarsipkan tidak menghapus data." />
+      <PageHeader title="Tahun ajaran" description="Hanya satu tahun ajaran yang aktif. Mengarsipkan tidak menghapus data. Hapus hanya untuk tahun ajaran kosong (misalnya salah buat)." />
       <div className="grid gap-6 lg:grid-cols-3">
         <section className="card p-5 lg:col-span-2">
           <h2 className="mb-3 text-base font-semibold">Daftar tahun ajaran</h2>
@@ -33,6 +34,7 @@ export default async function AcademicYearPage() {
                   <div className="flex gap-2">
                     {!y.is_active && !y.is_archived && <ConfirmAction label="Aktifkan" title={`Aktifkan ${y.name}?`} description="Tahun ajaran aktif yang sekarang akan dinonaktifkan." confirmLabel="Aktifkan" run={yearTransitionAction.bind(null, y.id, "activate")} />}
                     {!y.is_active && !y.is_archived && <ConfirmAction label="Arsipkan" title={`Arsipkan ${y.name}?`} description="Tahun ajaran terarsip tidak dapat diaktifkan lagi. Data kelas dan absensi tetap tersimpan." confirmLabel="Arsipkan" danger run={yearTransitionAction.bind(null, y.id, "archive")} />}
+                    {!y.is_active && <DeleteYearDialog yearId={y.id} name={y.name} />}
                   </div>
                 </li>
               ))}

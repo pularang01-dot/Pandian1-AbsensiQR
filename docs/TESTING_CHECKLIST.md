@@ -99,3 +99,9 @@ Beban: pindai beruntun saat jam masuk (misalnya 200 siswa dalam 15 menit).
 - [ ] Kelas yang masih berisi siswa atau punya absensi: dialog menampilkan alasan dan tidak ada kolom konfirmasi.
 - [ ] Kelas kosong (buat kelas baru lalu coba): tombol Hapus aktif hanya setelah mengetik HAPUS; setelah dihapus kembali ke daftar kelas.
 - [ ] Menu Aktivitas mencatat penghapusan kelas beserta pelakunya.
+
+## Hapus tahun ajaran
+- [ ] Tahun ajaran aktif tidak punya tombol Hapus; tahun ajaran lain punya.
+- [ ] Tahun ajaran yang kelasnya berisi siswa atau absensi: dialog menampilkan alasan dan tidak ada kolom konfirmasi.
+- [ ] Buat tahun ajaran uji (misalnya 2099/2100) lalu hapus: tombol aktif hanya setelah mengetik HAPUS; daftar menyegarkan diri.
+- [ ] Menu Aktivitas mencatat penghapusannya beserta pelakunya.
