@@ -830,3 +830,54 @@ do $$ declare n int; eid uuid; ok boolean; begin
   perform public.check_('pelindung banjir membatasi jenis error baru per menit', (select count(*) from public.app_errors where message like 'banjir%') <= 60);
 end $$;
 reset role;
+
+-- ============ 021: hapus siswa yang punya penempatan kelas (kasus impor CSV) ============
+reset role;
+insert into public.students(id,nis,full_name,is_demo) values
+ ('50000000-0000-0000-0000-0000000000e5','9801','Impor Tanpa Riwayat',true),
+ ('50000000-0000-0000-0000-0000000000e6','9802','Impor Dengan Riwayat',true);
+insert into public.student_class_assignments(student_id,class_id,academic_year_id) values
+ ('50000000-0000-0000-0000-0000000000e5','c1000000-0000-0000-0000-000000000001','a1000000-0000-0000-0000-000000000000'),
+ ('50000000-0000-0000-0000-0000000000e6','c1000000-0000-0000-0000-000000000001','a1000000-0000-0000-0000-000000000000');
+insert into public.student_qr_tokens(student_id, token) values ('50000000-0000-0000-0000-0000000000e5', public.new_qr_token());
+insert into public.attendance_records(session_id,student_id,status,source) select id,'50000000-0000-0000-0000-0000000000e6','present','manual' from public.attendance_sessions order by session_date desc limit 1;
+do $$ declare r jsonb; begin
+  perform public.test_as('00000000-0000-0000-0000-000000000001');
+  r := public.delete_students(array['50000000-0000-0000-0000-0000000000e5','50000000-0000-0000-0000-0000000000e6']::uuid[], 'HAPUS');
+  perform public.check_('siswa impor (punya penempatan kelas) tanpa riwayat terhapus', (r->>'deleted')::int = 1 and not exists (select 1 from public.students where id='50000000-0000-0000-0000-0000000000e5'));
+  perform public.check_('penempatan kelasnya ikut terhapus', not exists (select 1 from public.student_class_assignments where student_id='50000000-0000-0000-0000-0000000000e5'));
+  perform public.check_('siswa impor yang punya riwayat tetap dilindungi beserta penempatannya', exists (select 1 from public.students where id='50000000-0000-0000-0000-0000000000e6') and exists (select 1 from public.student_class_assignments where student_id='50000000-0000-0000-0000-0000000000e6'));
+end $$;
+reset role;
+
+-- ============ 022: hapus kelas ============
+reset role;
+insert into public.classes(id,name,academic_year_id,grade_level,is_active) values
+ ('c1000000-0000-0000-0000-0000000000e1','Kosong Uji','a1000000-0000-0000-0000-000000000000',3,true),
+ ('c1000000-0000-0000-0000-0000000000e2','Berisi Uji','a1000000-0000-0000-0000-000000000000',3,true),
+ ('c1000000-0000-0000-0000-0000000000e3','Berriwayat Uji','a1000000-0000-0000-0000-000000000000',3,true);
+insert into public.students(id,nis,full_name,is_demo) values ('50000000-0000-0000-0000-0000000000e7','9803','Kelas Hapus Uji',true);
+insert into public.student_class_assignments(student_id,class_id,academic_year_id) values ('50000000-0000-0000-0000-0000000000e7','c1000000-0000-0000-0000-0000000000e2','a1000000-0000-0000-0000-000000000000');
+insert into public.student_class_assignments(student_id,class_id,academic_year_id,end_date) values ('50000000-0000-0000-0000-0000000000e7','c1000000-0000-0000-0000-0000000000e3','a1000000-0000-0000-0000-000000000000', current_date);
+do $$ declare r jsonb; begin
+  perform public.test_as('00000000-0000-0000-0000-000000000005');
+  perform public.expect_fail('guru tak bisa menghapus kelas', $q$ select public.delete_class('c1000000-0000-0000-0000-0000000000e1','HAPUS') $q$);
+  perform public.test_as('00000000-0000-0000-0000-000000000002');
+  perform public.expect_fail('operator tak bisa menghapus kelas', $q$ select public.delete_class('c1000000-0000-0000-0000-0000000000e1','HAPUS') $q$);
+  perform public.test_as('00000000-0000-0000-0000-000000000001');
+  r := public.delete_class('c1000000-0000-0000-0000-0000000000e1','',true);
+  perform public.check_('pratinjau kelas kosong: dapat dihapus', r->>'result'='deletable' and exists(select 1 from public.classes where id='c1000000-0000-0000-0000-0000000000e1'));
+  perform public.expect_fail('hapus tanpa kata HAPUS ditolak', $q$ select public.delete_class('c1000000-0000-0000-0000-0000000000e1','hapus') $q$);
+  r := public.delete_class('c1000000-0000-0000-0000-0000000000e2','HAPUS');
+  perform public.check_('kelas yang masih berisi siswa dilindungi', r->>'result'='protected' and exists(select 1 from public.classes where id='c1000000-0000-0000-0000-0000000000e2'));
+  r := public.delete_class('c1000000-0000-0000-0000-0000000000e3','HAPUS');
+  perform public.check_('kelas dengan riwayat penempatan dilindungi', r->>'result'='protected' and exists(select 1 from public.classes where id='c1000000-0000-0000-0000-0000000000e3'));
+  r := public.delete_class('c1000000-0000-0000-0000-000000000001','HAPUS');
+  perform public.check_('kelas dengan absensi atau siswa dilindungi', r->>'result'='protected');
+  r := public.delete_class('c1000000-0000-0000-0000-0000000000e1','HAPUS');
+  perform public.check_('kelas kosong terhapus', r->>'result'='deleted' and not exists(select 1 from public.classes where id='c1000000-0000-0000-0000-0000000000e1'));
+  perform public.check_('penghapusan kelas tercatat di audit', exists(select 1 from public.audit_logs where entity_table='classes' and action='delete' and entity_id='c1000000-0000-0000-0000-0000000000e1'));
+  r := public.delete_class('c1000000-0000-0000-0000-0000000000e1','HAPUS');
+  perform public.check_('kelas yang sudah tidak ada dilaporkan not_found', r->>'result'='not_found');
+end $$;
+reset role;

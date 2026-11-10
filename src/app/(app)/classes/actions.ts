@@ -85,3 +85,33 @@ export async function graduateClassAction(classId: string, deactivateParents: bo
   revalidatePath("/settings/users");
   return { ok: true, students: d.students, parentsDeactivated: d.parents_deactivated, message: `${d.students} siswa diluluskan.${d.parents_deactivated ? ` ${d.parents_deactivated} akun orang tua dinonaktifkan.` : ""}` };
 }
+
+export type DeleteClassResult = { ok: boolean; deletable?: boolean; name?: string; reasons?: string[]; message?: string };
+
+/** Pratinjau penghapusan kelas: tidak mengubah apa pun. */
+export async function previewDeleteClassAction(classId: string): Promise<DeleteClassResult> {
+  await requireRole(ADMIN_ROLES);
+  if (!UUID_RE.test(classId)) return { ok: false, message: "Data tidak valid." };
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("delete_class", { p_class: classId, p_confirm: "", p_dry: true });
+  if (error) return { ok: false, message: friendlyDbError(error) };
+  const d = (data ?? {}) as { result?: string; name?: string; reasons?: string[]; message?: string };
+  if (d.result === "deletable") return { ok: true, deletable: true, name: d.name };
+  if (d.result === "protected") return { ok: true, deletable: false, name: d.name, reasons: d.reasons ?? [], message: d.message };
+  return { ok: false, message: d.message ?? "Kelas tidak dapat diperiksa." };
+}
+
+export async function deleteClassAction(classId: string, confirm: string): Promise<DeleteClassResult> {
+  await requireRole(ADMIN_ROLES);
+  if (confirm !== "HAPUS") return { ok: false, message: "Ketik HAPUS (huruf besar) untuk melanjutkan." };
+  if (!UUID_RE.test(classId)) return { ok: false, message: "Data tidak valid." };
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("delete_class", { p_class: classId, p_confirm: confirm, p_dry: false });
+  if (error) return { ok: false, message: `${friendlyDbError(error)} Tidak ada data yang dihapus.` };
+  const d = (data ?? {}) as { result?: string; name?: string; message?: string };
+  if (d.result !== "deleted") return { ok: false, message: `${d.message ?? "Kelas tidak dapat dihapus."} Tidak ada data yang dihapus.` };
+  revalidatePath("/classes");
+  revalidatePath("/attendance/class");
+  revalidatePath("/dashboard");
+  return { ok: true, name: d.name, message: `Kelas ${d.name} dihapus.` };
+}

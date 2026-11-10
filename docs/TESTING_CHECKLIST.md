@@ -93,3 +93,9 @@ Beban: pindai beruntun saat jam masuk (misalnya 200 siswa dalam 15 menit).
 - [ ] Pesan di daftar tidak memuat email, NIS, atau id lengkap.
 - [ ] Tombol "Tandai selesai" dan "Tandai semua selesai" bekerja; peringatan merah di dashboard hilang.
 - [ ] Layar "Terjadi kesalahan" menampilkan kode kesalahan bila ada.
+
+## Hapus kelas
+- [ ] Admin: halaman rincian kelas memiliki bagian "Hapus kelas"; guru dan operator tidak melihatnya.
+- [ ] Kelas yang masih berisi siswa atau punya absensi: dialog menampilkan alasan dan tidak ada kolom konfirmasi.
+- [ ] Kelas kosong (buat kelas baru lalu coba): tombol Hapus aktif hanya setelah mengetik HAPUS; setelah dihapus kembali ke daftar kelas.
+- [ ] Menu Aktivitas mencatat penghapusan kelas beserta pelakunya.

@@ -12,6 +12,7 @@ import { loadProfileNames, loadTeachers } from "@/lib/data/teachers";
 import { one } from "@/lib/data/students";
 import { ClassFormButton } from "../class-form";
 import { formatTanggal } from "@/lib/utils";
+import { DeleteClassDialog } from "@/components/classes/delete-class-dialog";
 import { DeleteStudentsDialog } from "@/components/students/delete-students-dialog";
 import { GraduateClassDialog } from "@/components/students/graduate-class-dialog";
 import { AddStudentToClass, MoveHomeroom, TransferStudent } from "./class-members";
@@ -111,6 +112,14 @@ export default async function ClassDetailPage({ params }: { params: Promise<{ id
           <h2 className="text-base font-semibold text-danger">Zona berbahaya</h2>
           <p className="mb-3 mt-1 text-sm text-ink-muted">Hapus permanen seluruh siswa di kelas ini. Hanya siswa tanpa riwayat yang dapat dihapus. Sistem akan menampilkan peringatan dan meminta konfirmasi sebelum menghapus.</p>
           <DeleteStudentsDialog target={{ classId: cls.id }} subject={`seluruh siswa kelas ${cls.name}`} buttonLabel={`Hapus data siswa kelas ${cls.name}`} size="md" />
+        </section>
+      )}
+
+      {isAdmin && (
+        <section className="card mt-6 border-danger/30 p-5">
+          <h2 className="text-base font-semibold text-danger">Hapus kelas</h2>
+          <p className="mb-3 mt-1 text-sm text-ink-muted">Untuk kelas yang salah dibuat atau tidak terpakai. Hanya kelas kosong (tanpa siswa dan tanpa catatan absensi) yang dapat dihapus. Kelas berriwayat cukup dinonaktifkan lewat tombol Ubah.</p>
+          <DeleteClassDialog classId={cls.id} className={cls.name} />
         </section>
       )}
 
