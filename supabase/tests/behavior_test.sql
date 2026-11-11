@@ -934,3 +934,42 @@ do $$ begin
   perform public.expect_fail('menonaktifkan yang sudah nonaktif ditolak', $q$ select public.deactivate_academic_year('a1000000-0000-0000-0000-0000000000f4') $q$);
 end $$;
 reset role;
+
+-- ============ 025: tempatkan siswa yang sudah ada ke kelas ============
+reset role;
+insert into public.students(id,nis,full_name,is_demo,status) values
+ ('50000000-0000-0000-0000-0000000000d5','9851','Penempatan Satu',true,'active'),
+ ('50000000-0000-0000-0000-0000000000d6','9852','Penempatan Dua',true,'active'),
+ ('50000000-0000-0000-0000-0000000000d7','9853','Nama Kembar Uji',true,'active'),
+ ('50000000-0000-0000-0000-0000000000d8','9854','Nama Kembar Uji',true,'active'),
+ ('50000000-0000-0000-0000-0000000000d9','9855','Sudah Pindah Uji',true,'transferred');
+update public.academic_years set is_active = false where is_active;
+update public.academic_years set is_active = true where id='a1000000-0000-0000-0000-000000000000';
+do $$ declare r jsonb; y uuid := 'a1000000-0000-0000-0000-000000000000'; n1 text; begin
+  perform public.test_as('00000000-0000-0000-0000-000000000005');
+  perform public.expect_fail('guru tak bisa menempatkan siswa lewat berkas', format($q$ select public.assign_existing_students('[{"nis":"9851","class_name":"1A"}]', %L) $q$, y));
+  perform public.test_as('00000000-0000-0000-0000-000000000001');
+
+  r := public.assign_existing_students('[{"nis":"9851","class_name":"1A"},{"nis":"","full_name":"penempatan dua","class_name":"1b"}]', y);
+  perform public.check_('siswa yang sudah ada ditempatkan lewat NIS dan lewat nama', (r->>'assigned')::int=2 and jsonb_array_length(r->'skipped')=0
+    and exists(select 1 from public.student_class_assignments a join public.classes c on c.id=a.class_id where a.student_id='50000000-0000-0000-0000-0000000000d5' and c.name='1A' and a.end_date is null)
+    and exists(select 1 from public.student_class_assignments a join public.classes c on c.id=a.class_id where a.student_id='50000000-0000-0000-0000-0000000000d6' and c.name='1B' and a.end_date is null));
+  perform public.check_('tidak ada siswa baru yang dibuat', (select count(*) from public.students where nis in ('9851','9852','9853','9854','9855'))=5);
+
+  r := public.assign_existing_students('[{"nis":"9851","class_name":"1A"}]', y);
+  perform public.check_('sudah di kelas yang sama dilewati', (r->>'assigned')::int=0 and r->'skipped'->0->>'reason' like 'Sudah berada%');
+  r := public.assign_existing_students('[{"nis":"9851","class_name":"1B"}]', y);
+  perform public.check_('di kelas lain tanpa izin pindah dilewati dan tidak berubah', (r->>'moved')::int=0 and r->'skipped'->0->>'reason' like 'Sudah di kelas 1A%'
+    and exists(select 1 from public.student_class_assignments a join public.classes c on c.id=a.class_id where a.student_id='50000000-0000-0000-0000-0000000000d5' and c.name='1A' and a.end_date is null));
+  r := public.assign_existing_students('[{"nis":"9851","class_name":"1B"}]', y, true);
+  perform public.check_('dengan izin pindah: dipindahkan dan riwayat lama ditutup', (r->>'moved')::int=1
+    and exists(select 1 from public.student_class_assignments a join public.classes c on c.id=a.class_id where a.student_id='50000000-0000-0000-0000-0000000000d5' and c.name='1B' and a.end_date is null)
+    and exists(select 1 from public.student_class_assignments a join public.classes c on c.id=a.class_id where a.student_id='50000000-0000-0000-0000-0000000000d5' and c.name='1A' and a.end_date is not null));
+
+  r := public.assign_existing_students('[{"full_name":"Nama Kembar Uji","class_name":"1A"}]', y);
+  perform public.check_('nama ganda tanpa NIS dilewati', r->'skipped'->0->>'reason' like '%lebih dari satu%');
+  r := public.assign_existing_students('[{"nis":"0000","class_name":"1A"},{"nis":"9855","class_name":"1A"},{"nis":"9853","class_name":"9Z"},{"nis":"9853","class_name":""}]', y);
+  perform public.check_('NIS tak ada, siswa tidak aktif, kelas tak ada, kelas kosong dilewati semua', (r->>'assigned')::int=0 and jsonb_array_length(r->'skipped')=4);
+  perform public.check_('penempatan massal tercatat di audit', exists(select 1 from public.audit_logs where action='assign_students_class'));
+end $$;
+reset role;

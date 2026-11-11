@@ -36,6 +36,8 @@ export const importSchema = z.object({
   year_id: z.string().uuid("Tahun ajaran tidak valid."),
 });
 
+export const assignSchema = importSchema.extend({ move: z.boolean().default(false) });
+
 export const linkParentSchema = z.object({
   student_id: z.string().uuid(),
   parent_id: z.string().uuid("Pilih orang tua/wali."),

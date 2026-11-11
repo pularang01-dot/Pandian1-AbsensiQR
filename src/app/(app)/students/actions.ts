@@ -6,7 +6,7 @@ import { ADMIN_ROLES } from "@/lib/auth/roles";
 import { requireRole } from "@/lib/auth/session";
 import { createClient } from "@/lib/supabase/server";
 import { friendlyDbError, zodFieldErrors, type ActionState } from "@/lib/validation/common";
-import { importSchema, linkParentSchema, studentSchema } from "@/lib/validation/student";
+import { assignSchema, importSchema, linkParentSchema, studentSchema } from "@/lib/validation/student";
 
 function fieldFromDuplicate(message: string | undefined): Record<string, string> | null {
   if (!message) return null;
@@ -137,6 +137,23 @@ export async function importStudentsAction(payload: unknown): Promise<ImportResu
   revalidatePath("/students");
   const result = data as { inserted: number; skipped: { row: number; nis: string | null; reason: string }[] };
   return { ok: true, inserted: result.inserted, skipped: result.skipped };
+}
+
+export type AssignResult = ActionState & { assigned?: number; moved?: number; skipped?: { row: number; nis: string | null; reason: string }[] };
+
+/** Menempatkan siswa yang SUDAH ADA ke kelas (NIS atau nama + kelas). Tidak membuat siswa baru. */
+export async function assignExistingStudentsAction(payload: unknown): Promise<AssignResult> {
+  await requireRole(ADMIN_ROLES);
+  const parsed = assignSchema.safeParse(payload);
+  if (!parsed.success) return { ok: false, message: parsed.error.issues[0]?.message ?? "Data tidak valid." };
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("assign_existing_students", { p_rows: parsed.data.rows, p_year: parsed.data.year_id, p_move: parsed.data.move });
+  if (error) return { ok: false, message: friendlyDbError(error) };
+  revalidatePath("/students");
+  revalidatePath("/classes");
+  revalidatePath("/attendance/class");
+  const d = data as { assigned: number; moved: number; skipped: { row: number; nis: string | null; reason: string }[] };
+  return { ok: true, assigned: d.assigned, moved: d.moved, skipped: d.skipped };
 }
 
 export type DeleteTarget = { studentId?: string; classId?: string };

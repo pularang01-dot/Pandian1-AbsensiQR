@@ -5,7 +5,7 @@ import { toast } from "sonner";
 import { Download, FileSpreadsheet } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Field, Select } from "@/components/ui/field";
-import { importStudentsAction, type ImportResult } from "../actions";
+import { assignExistingStudentsAction, importStudentsAction, type AssignResult, type ImportResult } from "../actions";
 
 type Row = { nis: string; nisn: string; full_name: string; gender: string; class_name: string };
 
@@ -22,7 +22,7 @@ const key = (v: unknown) => String(v ?? "").trim().toLowerCase().replace(/[._]+/
 
 /** Cari baris judul (dalam 15 baris pertama) yang memuat kolom nama siswa. */
 function findHeaderRow(matrix: unknown[][]): number {
-  const names = new Set(HEADER_ALIASES.full_name);
+  const names = new Set([...HEADER_ALIASES.full_name, ...HEADER_ALIASES.nis]);
   for (let i = 0; i < Math.min(matrix.length, 15); i++) if (matrix[i].some((c) => names.has(key(c)))) return i;
   return -1;
 }
@@ -47,10 +47,14 @@ export function ImportClient({ years, classes, defaultYearId }: { years: { id: s
   const [parseError, setParseError] = useState("");
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState<ImportResult | null>(null);
+  const [mode, setMode] = useState<"add" | "assign">("add");
+  const [move, setMove] = useState(false);
+  const [assignResult, setAssignResult] = useState<AssignResult | null>(null);
   const input = useRef<HTMLInputElement>(null);
 
   async function onFile(file: File | undefined) {
     setResult(null);
+    setAssignResult(null);
     setParseError("");
     setRows([]);
     if (!file) return;
@@ -69,7 +73,7 @@ export function ImportClient({ years, classes, defaultYearId }: { years: { id: s
       if (!sheet) return setParseError("Berkas tidak memiliki lembar data.");
       const all = XLSX.utils.sheet_to_json<unknown[]>(sheet, { header: 1, defval: "", raw: false, blankrows: false });
       const h = findHeaderRow(all);
-      if (h < 0) return setParseError("Kolom nama siswa tidak ditemukan. Pastikan ada judul kolom 'Nama' atau 'Nama Siswa' di baris pertama.");
+      if (h < 0) return setParseError("Kolom NIS atau nama siswa tidak ditemukan. Pastikan ada judul kolom 'NIS' atau 'Nama Siswa' di baris pertama.");
       const header = all[h].map(key);
       const body = all.slice(h + 1);
       const parsed = body.map((c) => toRow(header, c, "")).filter((r) => r.nis || r.full_name);
@@ -85,6 +89,25 @@ export function ImportClient({ years, classes, defaultYearId }: { years: { id: s
   const finalRows = rows.map((r) => ({ ...r, class_name: r.class_name || defaultClass }));
   const yearClasses = classes.filter((c) => c.academic_year_id === yearId);
   const missingNis = finalRows.filter((r) => !r.nis).length;
+
+  async function submitAssign() {
+    setBusy(true);
+    setAssignResult(null);
+    try {
+      const r = await assignExistingStudentsAction({ rows: finalRows, year_id: yearId, move });
+      setAssignResult(r);
+      if (r.ok) {
+        toast.success(`${(r.assigned ?? 0) + (r.moved ?? 0)} siswa ditempatkan ke kelas.`);
+        setRows([]);
+        setFileName("");
+        if (input.current) input.current.value = "";
+      } else toast.error(r.message ?? "Proses gagal. Tidak ada data yang berubah.");
+    } catch {
+      toast.error("Tidak dapat terhubung ke server. Tidak ada data yang berubah.");
+    } finally {
+      setBusy(false);
+    }
+  }
 
   async function submit() {
     setBusy(true);
@@ -106,11 +129,13 @@ export function ImportClient({ years, classes, defaultYearId }: { years: { id: s
   }
 
   function template() {
-    const csv = "﻿NIS,NISN,Nama,JK,Kelas\r\n1001,0123456789,Contoh Nama Siswa,L,VI-A\r\n";
+    const csv = mode === "assign"
+      ? "﻿NIS,Nama,Kelas\r\n1001,Contoh Nama Siswa,VI-A\r\n"
+      : "﻿NIS,NISN,Nama,JK,Kelas\r\n1001,0123456789,Contoh Nama Siswa,L,VI-A\r\n";
     const url = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
     const a = document.createElement("a");
     a.href = url;
-    a.download = "templat-impor-siswa.csv";
+    a.download = mode === "assign" ? "templat-penempatan-kelas.csv" : "templat-impor-siswa.csv";
     a.click();
     URL.revokeObjectURL(url);
   }
@@ -118,6 +143,19 @@ export function ImportClient({ years, classes, defaultYearId }: { years: { id: s
   return (
     <div className="space-y-6">
       <section className="card space-y-5 p-5 sm:p-6">
+        <fieldset>
+          <legend className="field-label">Apa yang ingin dilakukan?</legend>
+          <div className="mt-1 grid gap-2 sm:grid-cols-2">
+            <label className={`flex min-h-11 cursor-pointer gap-2.5 rounded-lg border p-3 text-sm ${mode === "add" ? "border-brand bg-brand-light" : "border-line"}`}>
+              <input type="radio" name="mode" checked={mode === "add"} onChange={() => { setMode("add"); setRows([]); setFileName(""); setResult(null); setAssignResult(null); }} className="mt-0.5 accent-brand" />
+              <span><span className="block font-medium">Tambah siswa baru</span><span className="text-ink-muted">Siswa belum ada di aplikasi. NIS yang sudah terdaftar dilewati.</span></span>
+            </label>
+            <label className={`flex min-h-11 cursor-pointer gap-2.5 rounded-lg border p-3 text-sm ${mode === "assign" ? "border-brand bg-brand-light" : "border-line"}`}>
+              <input type="radio" name="mode" checked={mode === "assign"} onChange={() => { setMode("assign"); setRows([]); setFileName(""); setResult(null); setAssignResult(null); }} className="mt-0.5 accent-brand" />
+              <span><span className="block font-medium">Tempatkan siswa yang sudah ada ke kelas</span><span className="text-ink-muted">Data siswa sudah lengkap, hanya kelasnya yang belum diisi. Tidak membuat siswa baru.</span></span>
+            </label>
+          </div>
+        </fieldset>
         <div className="grid gap-5 sm:grid-cols-2">
           <Field label="Tahun ajaran untuk penempatan kelas" htmlFor="year">
             <Select id="year" value={yearId} onChange={(e) => setYearId(e.target.value)}>
@@ -136,6 +174,13 @@ export function ImportClient({ years, classes, defaultYearId }: { years: { id: s
           </div>
         </div>
 
+        {mode === "assign" && (
+          <label className="flex min-h-11 items-start gap-2.5 text-sm">
+            <input type="checkbox" checked={move} onChange={(e) => setMove(e.target.checked)} className="mt-0.5 h-4 w-4 rounded border-line accent-brand" />
+            <span>Pindahkan juga siswa yang sudah punya kelas lain pada tahun ajaran ini. <span className="text-ink-muted">Bila tidak dicentang, siswa yang sudah punya kelas dilewati. Riwayat absensi lama tetap tersimpan.</span></span>
+          </label>
+        )}
+
         <div>
           <label htmlFor="file" className="field-label">Berkas Excel atau CSV</label>
           <input
@@ -146,7 +191,11 @@ export function ImportClient({ years, classes, defaultYearId }: { years: { id: s
             onChange={(e) => onFile(e.target.files?.[0])}
             className="block w-full text-sm file:mr-3 file:h-11 file:rounded-lg file:border-0 file:bg-brand-light file:px-4 file:text-sm file:font-medium file:text-brand"
           />
+          {mode === "assign" ? (
+            <p className="mt-1 text-xs text-ink-muted">Kolom yang dibaca: Kelas, lalu NIS (disarankan) atau Nama Siswa. Bila hanya ada nama, siswa dicocokkan dengan nama yang persis sama; nama ganda dilewati dan dilaporkan. Hanya siswa berstatus aktif. Nama kelas harus sudah ada pada tahun ajaran terpilih. Kolom lain diabaikan.</p>
+          ) : (
           <p className="mt-1 text-xs text-ink-muted">Kolom yang dibaca: NIS dan Nama (atau Nama Siswa) wajib. NISN, JK atau L/P, dan Kelas opsional. Kolom lain, termasuk kolom tanggal 1-31 pada daftar hadir, diabaikan dan tidak diimpor. Jika berkas tidak punya kolom Kelas, pilih kelas di atas. Nama kelas harus sudah ada pada tahun ajaran terpilih.</p>
+          )}
           {parseError && <p role="alert" className="mt-2 text-sm font-medium text-danger">{parseError}</p>}
         </div>
       </section>
@@ -158,10 +207,10 @@ export function ImportClient({ years, classes, defaultYearId }: { years: { id: s
               <FileSpreadsheet className="h-5 w-5 text-brand" aria-hidden />
               <div>
                 <p className="text-sm font-semibold">{fileName}</p>
-                <p className="tabular text-xs text-ink-muted">{rows.length} baris siap diimpor{defaultClass ? ` ke kelas ${defaultClass}` : ""}. Pratinjau 8 baris pertama.{missingNis > 0 ? ` ${missingNis} baris tanpa NIS akan dilewati.` : ""}</p>
+                <p className="tabular text-xs text-ink-muted">{rows.length} baris siap {mode === "assign" ? "diproses" : "diimpor"}{defaultClass ? ` ke kelas ${defaultClass}` : ""}. Pratinjau 8 baris pertama.{mode === "add" && missingNis > 0 ? ` ${missingNis} baris tanpa NIS akan dilewati.` : ""}</p>
               </div>
             </div>
-            <Button onClick={submit} loading={busy}>Impor {rows.length} siswa</Button>
+            <Button onClick={mode === "assign" ? submitAssign : submit} loading={busy}>{mode === "assign" ? `Tempatkan ${rows.length} siswa` : `Impor ${rows.length} siswa`}</Button>
           </div>
           <div className="overflow-x-auto">
             <table className="w-full text-left text-sm">
@@ -178,6 +227,21 @@ export function ImportClient({ years, classes, defaultYearId }: { years: { id: s
         </section>
       )}
 
+      {assignResult && !assignResult.ok && (
+        <p role="alert" className="rounded-lg border border-danger/20 bg-danger/10 px-4 py-3 text-sm text-danger">{assignResult.message}</p>
+      )}
+      {assignResult?.ok && (
+        <section className="card p-5" role="status">
+          <p className="text-sm"><span className="font-semibold text-success">{assignResult.assigned} siswa ditempatkan ke kelas{(assignResult.moved ?? 0) > 0 ? `, ${assignResult.moved} dipindahkan` : ""}.</span> {assignResult.skipped && assignResult.skipped.length > 0 ? `${assignResult.skipped.length} baris dilewati:` : "Tidak ada baris yang dilewati."}</p>
+          {assignResult.skipped && assignResult.skipped.length > 0 && (
+            <ul className="mt-3 max-h-64 divide-y divide-line overflow-y-auto rounded-lg border border-line text-sm">
+              {assignResult.skipped.map((s, i) => (
+                <li key={i} className="flex justify-between gap-3 px-4 py-2"><span className="tabular">Baris {s.row}{s.nis ? ` | NIS ${s.nis}` : ""}</span><span className="text-ink-muted">{s.reason}</span></li>
+              ))}
+            </ul>
+          )}
+        </section>
+      )}
       {result && !result.ok && (
         <p role="alert" className="rounded-lg border border-danger/20 bg-danger/10 px-4 py-3 text-sm text-danger">{result.message}</p>
       )}
