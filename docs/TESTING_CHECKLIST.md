@@ -105,3 +105,10 @@ Beban: pindai beruntun saat jam masuk (misalnya 200 siswa dalam 15 menit).
 - [ ] Tahun ajaran yang kelasnya berisi siswa atau absensi: dialog menampilkan alasan dan tidak ada kolom konfirmasi.
 - [ ] Buat tahun ajaran uji (misalnya 2099/2100) lalu hapus: tombol aktif hanya setelah mengetik HAPUS; daftar menyegarkan diri.
 - [ ] Menu Aktivitas mencatat penghapusannya beserta pelakunya.
+- [ ] Tombol "Ubah" pada tahun ajaran (kecuali yang diarsipkan): ubah tanggal lalu simpan; kelas dan siswa tidak berubah; nama ganda ditolak; tercatat di Aktivitas.
+
+## Pengingat hari lalu belum selesai
+- [ ] Admin atau kepala sekolah: dashboard menampilkan banner kuning bila ada hari sekolah lalu (maksimal 14 hari) dengan siswa belum tercatat dan sesi belum ditutup; guru, operator, dan orang tua tidak melihatnya.
+- [ ] Teks "Kemarin ada N dari M siswa belum tercatat dan sesi belum ditutup" benar untuk hari kemarin; hari lebih lama menampilkan tanggal.
+- [ ] Tombol mengarah ke Absensi pada tanggal itu; admin dapat merekonsiliasi dari sana, dan banner hilang setelah sesi ditutup atau semua siswa tercatat.
+- [ ] Hari libur dan hari ini tidak pernah muncul di banner. Tidak ada siswa yang otomatis menjadi Alpa.

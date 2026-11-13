@@ -48,3 +48,6 @@ Aturan:
 - Catatan yang sudah ada tidak ditimpa. Siswa yang tidak dipilih tidak dianggap Alpa.
 - Catatan susulan tidak memiliki jam masuk, supaya tidak tampak seperti dipindai pada hari itu.
 - Bila sesi tanggal itu sudah ditutup (rekonsiliasi sudah berjalan), siswa tanpa catatan sudah menjadi Alpa; ubah lewat Koreksi dengan alasan, bukan lewat absensi susulan.
+
+### Pengingat hari lalu yang belum selesai
+Dashboard administrator dan kepala sekolah menampilkan banner bila ada hari sekolah lalu (maksimal 14 hari ke belakang) yang sesinya belum ditutup dan masih ada siswa belum tercatat, misalnya "Kemarin ada 12 dari 180 siswa belum tercatat dan sesi belum ditutup". Banner hanya pengingat: tidak ada siswa yang otomatis menjadi Alpa. Langkah yang disarankan: minta wali kelas melengkapi Absen Kelas (atau isi lewat absensi susulan), proses izin dan sakit yang tertunda, lalu rekonsiliasi hari itu. Banner hilang setelah sesi ditutup atau semua siswa tercatat.

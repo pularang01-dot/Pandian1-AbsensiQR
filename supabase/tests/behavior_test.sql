@@ -973,3 +973,33 @@ do $$ declare r jsonb; y uuid := 'a1000000-0000-0000-0000-000000000000'; n1 text
   perform public.check_('penempatan massal tercatat di audit', exists(select 1 from public.audit_logs where action='assign_students_class'));
 end $$;
 reset role;
+
+-- ============ 026: hari lalu dengan siswa belum tercatat ============
+reset role;
+insert into public.students(id,nis,full_name,is_demo,status) values ('50000000-0000-0000-0000-0000000000d2','9861','Belum Tercatat Uji',true,'active');
+insert into public.student_class_assignments(student_id,class_id,academic_year_id,start_date) values ('50000000-0000-0000-0000-0000000000d2','c1000000-0000-0000-0000-000000000001','a1000000-0000-0000-0000-000000000000', public.school_today()-30);
+do $$ declare dd date := public.school_today() - 22; u1 int; u2 int; sid uuid; begin
+  perform public.ensure_attendance_session(dd);
+  update public.attendance_sessions set status='open' where session_date=dd;
+
+  perform public.test_as('00000000-0000-0000-0000-000000000005');
+  perform public.expect_fail('guru tak bisa memanggil unrecorded_days', $q$ select * from public.unrecorded_days(30) $q$);
+
+  perform public.test_as('00000000-0000-0000-0000-000000000001');
+  select unrecorded into u1 from public.unrecorded_days(30) where day = dd;
+  perform public.check_('hari lalu dengan sesi terbuka dan siswa tanpa catatan muncul', u1 is not null and u1 >= 1);
+  perform public.check_('hari ini tidak ikut dihitung', not exists(select 1 from public.unrecorded_days(30) where day = public.school_today()));
+
+  reset role;
+  select id into sid from public.attendance_sessions where session_date=dd;
+  insert into public.attendance_records(session_id,student_id,status,source) values (sid, '50000000-0000-0000-0000-0000000000d2', 'present','manual');
+  perform public.test_as('00000000-0000-0000-0000-000000000001');
+  select unrecorded into u2 from public.unrecorded_days(30) where day = dd;
+  perform public.check_('satu catatan baru mengurangi hitungan tepat satu', coalesce(u2,0) = u1 - 1);
+
+  reset role;
+  update public.attendance_sessions set status='closed' where session_date=dd;
+  perform public.test_as('00000000-0000-0000-0000-000000000001');
+  perform public.check_('sesi yang sudah ditutup tidak muncul lagi', not exists(select 1 from public.unrecorded_days(30) where day = dd));
+end $$;
+reset role;

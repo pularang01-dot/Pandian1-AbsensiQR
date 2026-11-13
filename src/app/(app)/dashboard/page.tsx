@@ -64,6 +64,18 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
     } catch { backup = null; }
   }
 
+  // Pengingat hari lalu yang belum selesai: siswa belum tercatat dan sesi belum ditutup (administrator dan kepala sekolah).
+  // Hanya pengingat; tidak ada yang otomatis menjadi Alpa. Kegagalan di sini tidak boleh merusak dashboard.
+  let pendingDays: { day: string; unrecorded: number; total: number }[] = [];
+  if (user.roles.some((r) => ["super_admin", "school_admin", "principal"].includes(r))) {
+    try {
+      const { data: ud, error: ue } = await supabase.rpc("unrecorded_days", { p_days: 14 });
+      if (!ue && Array.isArray(ud)) pendingDays = ud as typeof pendingDays;
+    } catch { pendingDays = []; }
+  }
+  const canReconcile = user.roles.some((r) => ["super_admin", "school_admin"].includes(r));
+  const yesterdayISO = (() => { const d = new Date(`${todayISO()}T00:00:00Z`); d.setUTCDate(d.getUTCDate() - 1); return d.toISOString().slice(0, 10); })();
+
   // Peringatan error teknis: hanya super admin. Kegagalan di sini tidak boleh merusak dashboard.
   let openErrors = 0;
   if (user.roles.includes("super_admin")) {
@@ -126,6 +138,30 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
           </p>
           <Link href="/settings/backup" className="inline-flex h-11 items-center justify-center rounded-lg bg-brand px-4 text-sm font-medium text-white hover:bg-[#2b68bd]">Buat cadangan</Link>
         </div>
+      )}
+
+      {pendingDays.length > 0 && (
+        <section role="status" aria-label="Absensi hari lalu belum selesai" className="mb-6 rounded-lg border border-warning/40 bg-warning/10 px-4 py-3">
+          <p className="flex items-start gap-2 text-sm">
+            <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-warning" aria-hidden />
+            <span>
+              <span className="font-semibold">Ada {pendingDays.length} hari lalu yang absensinya belum selesai.</span>{" "}
+              Siswa yang belum tercatat belum dianggap Alpa selama sesi belum ditutup.
+            </span>
+          </p>
+          <ul className="mt-2 divide-y divide-warning/20 text-sm">
+            {pendingDays.slice(0, 5).map((d) => (
+              <li key={d.day} className="flex flex-col gap-2 py-2 sm:flex-row sm:items-center sm:justify-between">
+                <span>
+                  <span className="font-medium">{d.day === yesterdayISO ? "Kemarin" : formatTanggal(d.day)}</span>
+                  {" "}ada <span className="tabular font-semibold">{d.unrecorded}</span> dari <span className="tabular">{d.total}</span> siswa belum tercatat dan sesi belum ditutup.
+                </span>
+                <Link href={`/attendance?date=${d.day}`} className="inline-flex h-10 items-center justify-center rounded-lg border border-line bg-surface px-3 text-sm font-medium hover:bg-canvas">{canReconcile ? "Lihat dan rekonsiliasi" : "Lihat"}</Link>
+              </li>
+            ))}
+          </ul>
+          {pendingDays.length > 5 && <p className="mt-1 text-xs text-ink-muted">Dan {pendingDays.length - 5} hari lain.</p>}
+        </section>
       )}
 
       {openErrors > 0 && (
