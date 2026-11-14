@@ -69,7 +69,7 @@ const VALUE: Record<string, string> = {
 };
 const SETTING_LABEL: Record<string, string> = {
   "school.name": "Nama sekolah", "school.address": "Alamat sekolah", "school.phone": "Telepon sekolah", "school.timezone": "Zona waktu sekolah",
-  "attendance.start_time": "Jam mulai absensi", "attendance.late_after": "Batas jam terlambat", "attendance.close_time": "Jam penutupan absensi",
+  "attendance.start_time": "Jam mulai absensi", "attendance.late_after": "Batas jam terlambat", "attendance.go_live_date": "Tanggal mulai dipakai", "attendance.close_time": "Jam penutupan absensi",
   "attendance.school_days": "Hari sekolah", "hygiene.orphan_parent_days": "Batas hari akun orang tua tanpa anak aktif",
   "hygiene.stale_account_days": "Batas hari akun tidak dipakai", "permission.document_required_for_sick_days": "Sakit yang wajib dilengkapi surat (hari)",
 };

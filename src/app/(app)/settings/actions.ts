@@ -31,7 +31,7 @@ export async function saveAttendanceSettingsAction(_p: ActionState, fd: FormData
   await requireRole(ADMIN_ROLES);
   const parsed = attendanceSettingsSchema.safeParse({
     start_time: fd.get("start_time") ?? "", late_after: fd.get("late_after") ?? "", close_time: fd.get("close_time") ?? "",
-    school_days: fd.getAll("school_days").map(String), doc_days: fd.get("doc_days") ?? "",
+    school_days: fd.getAll("school_days").map(String), doc_days: fd.get("doc_days") ?? "", go_live_date: String(fd.get("go_live_date") ?? ""),
   });
   if (!parsed.success) return { ok: false, fieldErrors: zodFieldErrors(parsed.error) };
   const v = parsed.data;
@@ -39,6 +39,7 @@ export async function saveAttendanceSettingsAction(_p: ActionState, fd: FormData
   return saveSettings({
     "attendance.start_time": v.start_time, "attendance.late_after": v.late_after, "attendance.close_time": v.close_time,
     "attendance.school_days": [...new Set(v.school_days)].sort(), "permission.document_required_for_sick_days": v.doc_days,
+    "attendance.go_live_date": v.go_live_date,
   });
 }
 

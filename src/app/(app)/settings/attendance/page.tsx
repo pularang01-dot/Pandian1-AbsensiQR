@@ -34,6 +34,7 @@ export default async function AttendanceSettingsPage() {
               ))}
             </div>
           </fieldset>
+          <Field label="Tanggal mulai dipakai" htmlFor="go_live_date" hint="Pengingat rekonsiliasi di dashboard hanya berjalan sejak tanggal ini. Kosongkan selama aplikasi masih uji coba: pengingat tidak akan muncul. Isi dengan hari pertama aplikasi dipakai sungguhan."><Input id="go_live_date" name="go_live_date" type="date" defaultValue={str(s["attendance.go_live_date"], "")} /></Field>
           <Field label="Dokumen wajib bila sakit lebih dari (hari)" htmlFor="doc_days" required><Input id="doc_days" name="doc_days" type="number" min={1} max={30} defaultValue={num(s["permission.document_required_for_sick_days"], 3)} /></Field>
         </SimpleForm>
       </section>

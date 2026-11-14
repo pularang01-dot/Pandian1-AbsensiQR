@@ -14,6 +14,7 @@ export const attendanceSettingsSchema = z
     start_time: time, late_after: time, close_time: time,
     school_days: z.array(z.coerce.number().int().min(1).max(7)).min(1, "Pilih minimal satu hari sekolah."),
     doc_days: z.coerce.number().int().min(1, "Minimal 1 hari.").max(30, "Maksimal 30 hari."),
+    go_live_date: z.string().regex(/^(\d{4}-\d{2}-\d{2})?$/, "Tanggal mulai tidak valid.").default(""),
   })
   .refine((v) => v.start_time < v.late_after, { path: ["late_after"], message: "Batas terlambat harus setelah jam masuk." })
   .refine((v) => v.late_after < v.close_time, { path: ["close_time"], message: "Jam penutupan harus setelah batas terlambat." });

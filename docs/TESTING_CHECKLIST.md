@@ -112,3 +112,4 @@ Beban: pindai beruntun saat jam masuk (misalnya 200 siswa dalam 15 menit).
 - [ ] Teks "Kemarin ada N dari M siswa belum tercatat dan sesi belum ditutup" benar untuk hari kemarin; hari lebih lama menampilkan tanggal.
 - [ ] Tombol mengarah ke Absensi pada tanggal itu; admin dapat merekonsiliasi dari sana, dan banner hilang setelah sesi ditutup atau semua siswa tercatat.
 - [ ] Hari libur dan hari ini tidak pernah muncul di banner. Tidak ada siswa yang otomatis menjadi Alpa.
+- [ ] Pengaturan > Aturan absensi memiliki "Tanggal mulai dipakai". Kosong: banner hari lalu tidak muncul. Diisi hari pertama pemakaian sungguhan: banner hanya menghitung hari sejak tanggal itu.

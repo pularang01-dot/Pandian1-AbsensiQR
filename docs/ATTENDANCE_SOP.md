@@ -51,3 +51,5 @@ Aturan:
 
 ### Pengingat hari lalu yang belum selesai
 Dashboard administrator dan kepala sekolah menampilkan banner bila ada hari sekolah lalu (maksimal 14 hari ke belakang) yang sesinya belum ditutup dan masih ada siswa belum tercatat, misalnya "Kemarin ada 12 dari 180 siswa belum tercatat dan sesi belum ditutup". Banner hanya pengingat: tidak ada siswa yang otomatis menjadi Alpa. Langkah yang disarankan: minta wali kelas melengkapi Absen Kelas (atau isi lewat absensi susulan), proses izin dan sakit yang tertunda, lalu rekonsiliasi hari itu. Banner hilang setelah sesi ditutup atau semua siswa tercatat.
+
+Pengingat ini baru berjalan setelah administrator mengisi **Tanggal mulai dipakai** di Pengaturan > Aturan absensi (hari pertama aplikasi dipakai sungguhan). Selama kosong, pengingat tidak muncul, jadi data uji coba tidak memicu peringatan.

@@ -978,7 +978,16 @@ reset role;
 reset role;
 insert into public.students(id,nis,full_name,is_demo,status) values ('50000000-0000-0000-0000-0000000000d2','9861','Belum Tercatat Uji',true,'active');
 insert into public.student_class_assignments(student_id,class_id,academic_year_id,start_date) values ('50000000-0000-0000-0000-0000000000d2','c1000000-0000-0000-0000-000000000001','a1000000-0000-0000-0000-000000000000', public.school_today()-30);
+delete from public.system_settings where key='attendance.go_live_date';
 do $$ declare dd date := public.school_today() - 22; u1 int; u2 int; sid uuid; begin
+  -- Tanpa tanggal mulai dipakai, pengingat tidak boleh muncul sama sekali.
+  perform public.ensure_attendance_session(dd);
+  update public.attendance_sessions set status='open' where session_date=dd;
+  perform public.test_as('00000000-0000-0000-0000-000000000001');
+  perform public.check_('tanggal mulai dipakai belum diisi: tidak ada pengingat', not exists(select 1 from public.unrecorded_days(30)));
+  reset role;
+  insert into public.system_settings(key,value) values ('attendance.go_live_date', to_jsonb((public.school_today()-30)::text))
+    on conflict (key) do update set value = excluded.value;
   perform public.ensure_attendance_session(dd);
   update public.attendance_sessions set status='open' where session_date=dd;
 
@@ -1001,5 +1010,24 @@ do $$ declare dd date := public.school_today() - 22; u1 int; u2 int; sid uuid; b
   update public.attendance_sessions set status='closed' where session_date=dd;
   perform public.test_as('00000000-0000-0000-0000-000000000001');
   perform public.check_('sesi yang sudah ditutup tidak muncul lagi', not exists(select 1 from public.unrecorded_days(30) where day = dd));
+end $$;
+reset role;
+
+-- ============ 027: batas awal pengingat = tanggal mulai dipakai ============
+reset role;
+do $$ declare dd date := public.school_today() - 22; begin
+  update public.attendance_sessions set status='open' where session_date=dd;
+  insert into public.system_settings(key,value) values ('attendance.go_live_date', to_jsonb((public.school_today()-10)::text))
+    on conflict (key) do update set value = excluded.value;
+  perform public.test_as('00000000-0000-0000-0000-000000000001');
+  perform public.check_('hari sebelum tanggal mulai dipakai tidak dihitung', not exists(select 1 from public.unrecorded_days(30) where day < public.school_today()-10));
+  reset role;
+  update public.system_settings set value = '"bukan tanggal"'::jsonb where key='attendance.go_live_date';
+  perform public.test_as('00000000-0000-0000-0000-000000000001');
+  perform public.check_('tanggal mulai tidak valid: aman dan tanpa pengingat', not exists(select 1 from public.unrecorded_days(30)));
+  reset role;
+  update public.system_settings set value = '""'::jsonb where key='attendance.go_live_date';
+  perform public.test_as('00000000-0000-0000-0000-000000000001');
+  perform public.check_('tanggal mulai kosong: tanpa pengingat', not exists(select 1 from public.unrecorded_days(30)));
 end $$;
 reset role;
