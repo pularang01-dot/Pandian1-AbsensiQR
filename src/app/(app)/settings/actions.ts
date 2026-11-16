@@ -45,7 +45,7 @@ export async function saveAttendanceSettingsAction(_p: ActionState, fd: FormData
 
 export async function createYearAction(_p: ActionState, fd: FormData): Promise<ActionState> {
   await requireRole(ADMIN_ROLES);
-  const parsed = yearSchema.safeParse({ name: fd.get("name") ?? "", start_date: fd.get("start_date") ?? "", end_date: fd.get("end_date") ?? "" });
+  const parsed = yearSchema.safeParse({ name: fd.get("name") ?? "", start_date: fd.get("start_date") ?? "", end_date: fd.get("end_date") ?? "", semester2_start: String(fd.get("semester2_start") ?? "") });
   if (!parsed.success) return { ok: false, fieldErrors: zodFieldErrors(parsed.error) };
   const supabase = await createClient();
   const { error } = await supabase.from("academic_years").insert(parsed.data);
@@ -138,7 +138,7 @@ export async function updateYearAction(_p: ActionState, fd: FormData): Promise<A
   await requireRole(ADMIN_ROLES);
   const id = String(fd.get("id") ?? "");
   if (!/^[0-9a-f-]{36}$/i.test(id)) return { ok: false, message: "Data tidak valid." };
-  const parsed = yearSchema.safeParse({ name: fd.get("name") ?? "", start_date: fd.get("start_date") ?? "", end_date: fd.get("end_date") ?? "" });
+  const parsed = yearSchema.safeParse({ name: fd.get("name") ?? "", start_date: fd.get("start_date") ?? "", end_date: fd.get("end_date") ?? "", semester2_start: String(fd.get("semester2_start") ?? "") });
   if (!parsed.success) return { ok: false, fieldErrors: zodFieldErrors(parsed.error) };
   const supabase = await createClient();
   const { data, error } = await supabase.from("academic_years").update(parsed.data).eq("id", id).eq("is_archived", false).select("id");

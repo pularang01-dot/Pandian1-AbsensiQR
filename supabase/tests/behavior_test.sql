@@ -1031,3 +1031,17 @@ do $$ declare dd date := public.school_today() - 22; begin
   perform public.check_('tanggal mulai kosong: tanpa pengingat', not exists(select 1 from public.unrecorded_days(30)));
 end $$;
 reset role;
+
+-- ============ 028: pembagian semester ============
+reset role;
+do $$ declare ok boolean; begin
+  insert into public.academic_years(id,name,start_date,end_date,semester2_start) values ('a1000000-0000-0000-0000-0000000000f8','2096/2097','2096-07-13','2097-06-26','2097-01-05');
+  perform public.check_('awal semester Genap tersimpan', (select semester2_start from public.academic_years where id='a1000000-0000-0000-0000-0000000000f8') = date '2097-01-05');
+  begin update public.academic_years set semester2_start = '2096-07-01' where id='a1000000-0000-0000-0000-0000000000f8'; ok := true; exception when check_violation then ok := false; end;
+  perform public.check_('awal semester Genap sebelum awal tahun ajaran ditolak', not ok);
+  begin update public.academic_years set semester2_start = '2097-07-01' where id='a1000000-0000-0000-0000-0000000000f8'; ok := true; exception when check_violation then ok := false; end;
+  perform public.check_('awal semester Genap setelah akhir tahun ajaran ditolak', not ok);
+  update public.academic_years set semester2_start = null where id='a1000000-0000-0000-0000-0000000000f8';
+  perform public.check_('awal semester Genap boleh dikosongkan', (select semester2_start is null from public.academic_years where id='a1000000-0000-0000-0000-0000000000f8'));
+end $$;
+reset role;

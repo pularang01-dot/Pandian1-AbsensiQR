@@ -120,3 +120,5 @@ Beban: pindai beruntun saat jam masuk (misalnya 200 siswa dalam 15 menit).
 - [ ] Semester: pilih tahun ajaran dan Ganjil atau Genap; rentang Ganjil berakhir 31 Desember, Genap mulai 1 Januari.
 - [ ] Angka satu siswa pada laporan mingguan dan semester sama dengan laporan per siswa untuk rentang tanggal yang sama.
 - [ ] XLSX, CSV, PDF, dan Cetak berfungsi untuk keduanya (kop surat dan logo tampil); guru hanya melihat kelasnya.
+- [ ] Pengaturan > Tahun ajaran: kolom "Awal semester Genap" ada di form buat dan Ubah; daftar menampilkan "Semester Genap mulai ...". Tanggal di luar rentang tahun ajaran ditolak.
+- [ ] Laporan semester mengikuti tanggal itu: Ganjil berakhir sehari sebelum awal Genap. Bila kosong, memakai 1 Januari.

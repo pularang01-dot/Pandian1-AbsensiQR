@@ -17,7 +17,7 @@ export const dynamic = "force-dynamic";
 export default async function AcademicYearPage() {
   await requireRole(ADMIN_ROLES);
   const supabase = await createClient();
-  const { data } = await supabase.from("academic_years").select("id, name, start_date, end_date, is_active, is_archived").order("start_date", { ascending: false });
+  const { data } = await supabase.from("academic_years").select("*").order("start_date", { ascending: false });
   return (
     <>
       <PageHeader title="Tahun ajaran" description="Hanya satu tahun ajaran yang aktif. Mengarsipkan tidak menghapus data. Hapus hanya untuk tahun ajaran kosong (misalnya salah buat)." />
@@ -31,9 +31,10 @@ export default async function AcademicYearPage() {
                   <div>
                     <p className="font-medium">{y.name} <span className="ml-1 rounded-full border border-line bg-canvas px-2 py-0.5 text-xs">{y.is_active ? "Aktif" : y.is_archived ? "Diarsipkan" : "Belum aktif"}</span></p>
                     <p className="tabular text-xs text-ink-muted">{formatTanggal(y.start_date, "d MMM yyyy")} s.d. {formatTanggal(y.end_date, "d MMM yyyy")}</p>
+                    <p className="tabular text-xs text-ink-muted">Semester Genap mulai {y.semester2_start ? formatTanggal(y.semester2_start, "d MMM yyyy") : "1 Januari (bawaan, belum diatur)"}</p>
                   </div>
                   <div className="flex flex-wrap gap-2">
-                    {!y.is_archived && <EditYearButton id={y.id} name={y.name} startDate={y.start_date} endDate={y.end_date} />}
+                    {!y.is_archived && <EditYearButton id={y.id} name={y.name} startDate={y.start_date} endDate={y.end_date} semester2Start={y.semester2_start ?? ""} />}
                     {!y.is_active && !y.is_archived && <ConfirmAction label="Aktifkan" title={`Aktifkan ${y.name}?`} description="Tahun ajaran aktif yang sekarang akan dinonaktifkan." confirmLabel="Aktifkan" run={yearTransitionAction.bind(null, y.id, "activate")} />}
                     {y.is_active && <ConfirmAction label="Nonaktifkan" title={`Nonaktifkan ${y.name}?`} description="Data tidak berubah. Selama tidak ada tahun ajaran aktif, impor siswa dan pilihan bawaan meminta Anda mengaktifkan satu tahun ajaran lebih dulu." confirmLabel="Nonaktifkan" danger run={yearTransitionAction.bind(null, y.id, "deactivate")} />}
                     {!y.is_active && !y.is_archived && <ConfirmAction label="Arsipkan" title={`Arsipkan ${y.name}?`} description="Tahun ajaran terarsip tidak dapat diaktifkan lagi. Data kelas dan absensi tetap tersimpan." confirmLabel="Arsipkan" danger run={yearTransitionAction.bind(null, y.id, "archive")} />}
@@ -50,6 +51,7 @@ export default async function AcademicYearPage() {
             <Field label="Nama" htmlFor="name" required hint="Contoh: 2026/2027"><Input id="name" name="name" /></Field>
             <Field label="Mulai" htmlFor="start_date" required><Input id="start_date" name="start_date" type="date" /></Field>
             <Field label="Selesai" htmlFor="end_date" required><Input id="end_date" name="end_date" type="date" /></Field>
+            <Field label="Awal semester Genap" htmlFor="semester2_start" hint="Semester Ganjil berakhir sehari sebelumnya. Kosongkan untuk bawaan 1 Januari. Dapat diubah nanti."><Input id="semester2_start" name="semester2_start" type="date" /></Field>
           </SimpleForm>
         </section>
       </div>

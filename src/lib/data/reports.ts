@@ -38,10 +38,16 @@ export function weekRange(dateParam: string | null | undefined): { from: string;
 }
 
 /**
- * Semester dalam satu tahun ajaran. Ganjil: awal tahun ajaran sampai 31 Desember. Genap: 1 Januari sampai akhir tahun ajaran.
+ * Semester dalam satu tahun ajaran. Bila sekolah mengisi awal semester Genap di pengaturan tahun ajaran, itulah batasnya
+ * (Ganjil sampai sehari sebelumnya). Bila kosong: Ganjil sampai 31 Desember, Genap 1 Januari sampai akhir tahun ajaran.
  * Bila tanggal tahun ajaran tidak melewati pergantian tahun, dibagi dua di tengah.
  */
-export function semesterRange(startDate: string, endDate: string, sem: 1 | 2): { from: string; to: string } {
+export function semesterRange(startDate: string, endDate: string, sem: 1 | 2, genapStart?: string | null): { from: string; to: string } {
+  // Awal semester Genap ditetapkan sekolah di pengaturan tahun ajaran.
+  if (genapStart && genapStart > startDate && genapStart <= endDate) {
+    const prev = format(addDays(parse(genapStart, "yyyy-MM-dd", new Date()), -1), "yyyy-MM-dd");
+    return sem === 1 ? { from: startDate, to: prev } : { from: genapStart, to: endDate };
+  }
   const startYear = Number(startDate.slice(0, 4));
   const dec31 = `${startYear}-12-31`;
   const jan1 = `${startYear + 1}-01-01`;
@@ -154,16 +160,16 @@ export async function buildSemester(yearParam: string | null | undefined, semPar
     return { yearId: "", sem: 1, from: "", to: "", yearName: "", title: "Laporan Absensi Semester", subtitle: "", head: STUDENT_HEAD, rows: [], notes: NOTE_RULES, error: "Belum ada tahun ajaran." };
   }
   const t = todayISO();
-  const ganjil = semesterRange(year.start_date, year.end_date, 1);
+  const ganjil = semesterRange(year.start_date, year.end_date, 1, year.semester2_start);
   const sem: 1 | 2 = semParam === "1" ? 1 : semParam === "2" ? 2 : (t > ganjil.to ? 2 : 1);
-  const { from, to } = semesterRange(year.start_date, year.end_date, sem);
+  const { from, to } = semesterRange(year.start_date, year.end_date, sem, year.semester2_start);
   const [classes, r] = await Promise.all([loadClasses(), studentRows(from, to, classId)]);
   return {
     yearId: year.id, sem, from, to, yearName: year.name,
     title: `Laporan Absensi Semester ${sem === 1 ? "Ganjil" : "Genap"} ${year.name}`,
     subtitle: `${formatTanggal(from, "d MMM yyyy")} s.d. ${formatTanggal(to, "d MMM yyyy")}${classId ? ` | Kelas ${classes.find((c) => c.id === classId)?.name ?? ""}` : " | Semua kelas"}`,
     head: STUDENT_HEAD, rows: r.rows, rowIds: r.ids,
-    notes: [...NOTE_RULES, "Semester Ganjil = awal tahun ajaran sampai 31 Desember; Genap = 1 Januari sampai akhir tahun ajaran. Hari Sekolah = jumlah sesi absensi pada semester itu.", "Daftar siswa berdasarkan kelas dan status saat ini. Siswa yang pindah atau lulus di tengah semester tidak termasuk."],
+    notes: [...NOTE_RULES, "Pembagian semester mengikuti pengaturan tahun ajaran (bila awal semester Genap belum diisi: Ganjil sampai 31 Desember, Genap mulai 1 Januari). Hari Sekolah = jumlah sesi absensi pada semester itu.", "Daftar siswa berdasarkan kelas dan status saat ini. Siswa yang pindah atau lulus di tengah semester tidak termasuk."],
     error: r.error,
   };
 }

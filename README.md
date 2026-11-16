@@ -4,7 +4,7 @@ Sistem absensi, izin, dispensasi, pulang lebih awal, dan pelaporan untuk SDN Pan
 
 Teknologi: Next.js 15 (App Router), React 19, TypeScript, Tailwind CSS, Supabase (PostgreSQL, Auth, RLS, Storage privat), Zod, React Hook Form, zxing (pemindai QR), recharts, jsPDF dan xlsx (ekspor).
 
-> Status verifikasi yang jujur: migrasi basis data dan aturan perilaku (RLS, RPC) sudah diuji pada PostgreSQL 16 lokal dengan stub Supabase (278 pemeriksaan lulus). Kode aplikasi baru melewati pemeriksaan sintaks dan impor. `npm run build`, `lint`, `typecheck`, dan pengujian peramban BELUM dijalankan karena dependensi belum dipasang. Lihat docs/TESTING_CHECKLIST.md dan jalankan sebelum dipakai.
+> Status verifikasi yang jujur: migrasi basis data dan aturan perilaku (RLS, RPC) sudah diuji pada PostgreSQL 16 lokal dengan stub Supabase (282 pemeriksaan lulus). Kode aplikasi baru melewati pemeriksaan sintaks dan impor. `npm run build`, `lint`, `typecheck`, dan pengujian peramban BELUM dijalankan karena dependensi belum dipasang. Lihat docs/TESTING_CHECKLIST.md dan jalankan sebelum dipakai.
 
 ## Modul
 
@@ -28,7 +28,7 @@ npm install
 
 1. Buat proyek di https://supabase.com. Catat Project URL, anon key, dan service-role key (Project Settings > API).
 2. Buka SQL Editor, jalankan berkas berikut BERURUTAN, satu per satu, dan pastikan tiap berkas selesai tanpa galat:
-   `supabase/migrations/001_schema.sql` sampai `027_go_live_date.sql`.
+   `supabase/migrations/001_schema.sql` sampai `028_semester_split.sql`.
    (Atau dengan CLI: `supabase db push` pada proyek yang sudah di-link.)
 3. Authentication > Providers: aktifkan Email. Nonaktifkan pendaftaran mandiri (Sign ups) agar akun hanya dibuat administrator.
 4. Authentication > URL Configuration: Site URL = alamat aplikasi; tambahkan `<alamat>/auth/callback` ke Redirect URLs.
@@ -104,4 +104,4 @@ Halaman `/activity` (super admin, admin sekolah, kepala sekolah) menampilkan jej
 Error aplikasi dicatat otomatis ke tabel `app_errors` (migrasi 020) tanpa layanan pihak ketiga: sisi server lewat `src/instrumentation.ts`, sisi peramban lewat `error.tsx`. Hanya pesan teknis yang disamarkan (email, angka panjang, id) yang disimpan, kejadian sama digabung, maksimal 500 baris. Super admin melihatnya di Pengaturan > Pemantauan error dan lewat peringatan merah di dashboard. Tidak menggantikan dashboard Supabase/Vercel untuk gangguan layanan itu sendiri.
 
 ## Laporan mingguan dan semester
-Menu Laporan memiliki laporan harian, mingguan (Senin sampai Minggu), bulanan, semester, dan per siswa; semuanya memakai perhitungan yang sama (fungsi `student_attendance_summary`) dan dapat diekspor XLSX, CSV, PDF. Semester Ganjil = awal tahun ajaran sampai 31 Desember, Genap = 1 Januari sampai akhir tahun ajaran. Tidak ada migrasi baru. Catatan: daftar siswa memakai kelas dan status saat ini, dan fungsi basis data mengembalikan paling banyak 1000 baris per laporan (cukup untuk sekolah ini; perlu penyesuaian bila siswa lebih dari 1000).
+Menu Laporan memiliki laporan harian, mingguan (Senin sampai Minggu), bulanan, semester, dan per siswa; semuanya memakai perhitungan yang sama (fungsi `student_attendance_summary`) dan dapat diekspor XLSX, CSV, PDF. Pembagian semester ditetapkan per tahun ajaran (kolom "Awal semester Genap" di Pengaturan > Tahun ajaran, migrasi 028); bila kosong, Ganjil sampai 31 Desember dan Genap mulai 1 Januari. Catatan: daftar siswa memakai kelas dan status saat ini, dan fungsi basis data mengembalikan paling banyak 1000 baris per laporan (cukup untuk sekolah ini; perlu penyesuaian bila siswa lebih dari 1000).
