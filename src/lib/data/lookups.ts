@@ -1,12 +1,12 @@
 import "server-only";
 import { createClient } from "@/lib/supabase/server";
 
-export type YearOption = { id: string; name: string; is_active: boolean; is_archived: boolean; start_date: string };
+export type YearOption = { id: string; name: string; is_active: boolean; is_archived: boolean; start_date: string; end_date: string };
 export type ClassOption = { id: string; name: string; academic_year_id: string; homeroom_teacher_id: string | null; is_active: boolean; grade_level: number | null };
 
 export async function loadYears(): Promise<YearOption[]> {
   const supabase = await createClient();
-  const { data } = await supabase.from("academic_years").select("id, name, is_active, is_archived, start_date").order("start_date", { ascending: false });
+  const { data } = await supabase.from("academic_years").select("id, name, is_active, is_archived, start_date, end_date").order("start_date", { ascending: false });
   return (data ?? []) as YearOption[];
 }
 

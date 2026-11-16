@@ -102,3 +102,6 @@ Halaman `/activity` (super admin, admin sekolah, kepala sekolah) menampilkan jej
 
 ## Pemantauan error
 Error aplikasi dicatat otomatis ke tabel `app_errors` (migrasi 020) tanpa layanan pihak ketiga: sisi server lewat `src/instrumentation.ts`, sisi peramban lewat `error.tsx`. Hanya pesan teknis yang disamarkan (email, angka panjang, id) yang disimpan, kejadian sama digabung, maksimal 500 baris. Super admin melihatnya di Pengaturan > Pemantauan error dan lewat peringatan merah di dashboard. Tidak menggantikan dashboard Supabase/Vercel untuk gangguan layanan itu sendiri.
+
+## Laporan mingguan dan semester
+Menu Laporan memiliki laporan harian, mingguan (Senin sampai Minggu), bulanan, semester, dan per siswa; semuanya memakai perhitungan yang sama (fungsi `student_attendance_summary`) dan dapat diekspor XLSX, CSV, PDF. Semester Ganjil = awal tahun ajaran sampai 31 Desember, Genap = 1 Januari sampai akhir tahun ajaran. Tidak ada migrasi baru. Catatan: daftar siswa memakai kelas dan status saat ini, dan fungsi basis data mengembalikan paling banyak 1000 baris per laporan (cukup untuk sekolah ini; perlu penyesuaian bila siswa lebih dari 1000).

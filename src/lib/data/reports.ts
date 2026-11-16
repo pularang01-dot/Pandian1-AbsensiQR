@@ -1,8 +1,8 @@
 import "server-only";
-import { endOfMonth, format, isValid, parse } from "date-fns";
+import { addDays, endOfMonth, format, isValid, parse, startOfWeek } from "date-fns";
 import { createClient } from "@/lib/supabase/server";
 import { addCount, attendanceRate, emptyCounts, formatRate, notRecorded, type StatusCounts } from "@/lib/attendance-calc";
-import { asDate, asUuid, loadClasses } from "@/lib/data/lookups";
+import { asDate, asUuid, loadClasses, loadYears, pickYear } from "@/lib/data/lookups";
 import { formatTanggal, todayISO } from "@/lib/utils";
 
 export type ReportTable = {
@@ -16,7 +16,7 @@ export type ReportTable = {
   rowIds?: string[];
 };
 
-export type ReportKind = "daily" | "monthly" | "students";
+export type ReportKind = "daily" | "weekly" | "monthly" | "semester" | "students";
 
 const NOTE_RULES = [
   "Kehadiran fisik = Hadir + Terlambat. Sakit, Izin, dan Kegiatan Resmi Sekolah bukan kehadiran fisik.",
@@ -28,6 +28,29 @@ export function monthRange(month: string | null | undefined): { month: string; f
   const parsed = month && /^\d{4}-\d{2}$/.test(month) ? parse(month, "yyyy-MM", new Date()) : null;
   const base = parsed && isValid(parsed) ? parsed : parse(todayISO().slice(0, 7), "yyyy-MM", new Date());
   return { month: format(base, "yyyy-MM"), from: format(base, "yyyy-MM-dd"), to: format(endOfMonth(base), "yyyy-MM-dd") };
+}
+
+/** Minggu = Senin sampai Minggu yang memuat tanggal terpilih (bawaan: minggu ini). */
+export function weekRange(dateParam: string | null | undefined): { from: string; to: string; anchor: string } {
+  const anchor = asDate(dateParam) ?? todayISO();
+  const monday = startOfWeek(parse(anchor, "yyyy-MM-dd", new Date()), { weekStartsOn: 1 });
+  return { from: format(monday, "yyyy-MM-dd"), to: format(addDays(monday, 6), "yyyy-MM-dd"), anchor };
+}
+
+/**
+ * Semester dalam satu tahun ajaran. Ganjil: awal tahun ajaran sampai 31 Desember. Genap: 1 Januari sampai akhir tahun ajaran.
+ * Bila tanggal tahun ajaran tidak melewati pergantian tahun, dibagi dua di tengah.
+ */
+export function semesterRange(startDate: string, endDate: string, sem: 1 | 2): { from: string; to: string } {
+  const startYear = Number(startDate.slice(0, 4));
+  const dec31 = `${startYear}-12-31`;
+  const jan1 = `${startYear + 1}-01-01`;
+  if (startDate < dec31 && endDate >= jan1) return sem === 1 ? { from: startDate, to: dec31 } : { from: jan1, to: endDate };
+  const s = parse(startDate, "yyyy-MM-dd", new Date()).getTime();
+  const e = parse(endDate, "yyyy-MM-dd", new Date()).getTime();
+  const mid = format(new Date(s + Math.floor((e - s) / 2)), "yyyy-MM-dd");
+  const next = format(addDays(parse(mid, "yyyy-MM-dd", new Date()), 1), "yyyy-MM-dd");
+  return sem === 1 ? { from: startDate, to: mid } : { from: next, to: endDate };
 }
 
 export function dateRange(from?: string | null, to?: string | null) {
@@ -110,6 +133,41 @@ export async function buildMonthly(monthParam: string | null | undefined, classP
   };
 }
 
+export async function buildWeekly(dateParam: string | null | undefined, classParam: string | null | undefined): Promise<ReportTable & { from: string; to: string; anchor: string }> {
+  const { from, to, anchor } = weekRange(dateParam);
+  const classId = asUuid(classParam);
+  const [classes, r] = await Promise.all([loadClasses(), studentRows(from, to, classId)]);
+  return {
+    from, to, anchor,
+    title: "Laporan Absensi Mingguan",
+    subtitle: `Minggu ${formatTanggal(from, "d MMM yyyy")} s.d. ${formatTanggal(to, "d MMM yyyy")}${classId ? ` | Kelas ${classes.find((c) => c.id === classId)?.name ?? ""}` : " | Semua kelas"}`,
+    head: STUDENT_HEAD, rows: r.rows, rowIds: r.ids,
+    notes: [...NOTE_RULES, "Minggu dihitung Senin sampai Minggu. Hari Sekolah = jumlah sesi absensi pada minggu itu; hari libur tidak memiliki sesi."], error: r.error,
+  };
+}
+
+export async function buildSemester(yearParam: string | null | undefined, semParam: string | null | undefined, classParam: string | null | undefined): Promise<ReportTable & { yearId: string; sem: 1 | 2; from: string; to: string; yearName: string }> {
+  const years = await loadYears();
+  const year = pickYear(years, asUuid(yearParam));
+  const classId = asUuid(classParam);
+  if (!year) {
+    return { yearId: "", sem: 1, from: "", to: "", yearName: "", title: "Laporan Absensi Semester", subtitle: "", head: STUDENT_HEAD, rows: [], notes: NOTE_RULES, error: "Belum ada tahun ajaran." };
+  }
+  const t = todayISO();
+  const ganjil = semesterRange(year.start_date, year.end_date, 1);
+  const sem: 1 | 2 = semParam === "1" ? 1 : semParam === "2" ? 2 : (t > ganjil.to ? 2 : 1);
+  const { from, to } = semesterRange(year.start_date, year.end_date, sem);
+  const [classes, r] = await Promise.all([loadClasses(), studentRows(from, to, classId)]);
+  return {
+    yearId: year.id, sem, from, to, yearName: year.name,
+    title: `Laporan Absensi Semester ${sem === 1 ? "Ganjil" : "Genap"} ${year.name}`,
+    subtitle: `${formatTanggal(from, "d MMM yyyy")} s.d. ${formatTanggal(to, "d MMM yyyy")}${classId ? ` | Kelas ${classes.find((c) => c.id === classId)?.name ?? ""}` : " | Semua kelas"}`,
+    head: STUDENT_HEAD, rows: r.rows, rowIds: r.ids,
+    notes: [...NOTE_RULES, "Semester Ganjil = awal tahun ajaran sampai 31 Desember; Genap = 1 Januari sampai akhir tahun ajaran. Hari Sekolah = jumlah sesi absensi pada semester itu.", "Daftar siswa berdasarkan kelas dan status saat ini. Siswa yang pindah atau lulus di tengah semester tidak termasuk."],
+    error: r.error,
+  };
+}
+
 export async function buildStudents(fromParam: string | null | undefined, toParam: string | null | undefined, classParam: string | null | undefined, q?: string): Promise<ReportTable & { from: string; to: string }> {
   const { from, to } = dateRange(fromParam, toParam);
   const classId = asUuid(classParam);
@@ -127,6 +185,8 @@ export async function buildStudents(fromParam: string | null | undefined, toPara
 
 export async function buildReport(kind: ReportKind, sp: URLSearchParams): Promise<ReportTable> {
   if (kind === "daily") return buildDaily(sp.get("date"), sp.get("class"));
+  if (kind === "weekly") return buildWeekly(sp.get("date"), sp.get("class"));
   if (kind === "monthly") return buildMonthly(sp.get("month"), sp.get("class"));
+  if (kind === "semester") return buildSemester(sp.get("year"), sp.get("sem"), sp.get("class"));
   return buildStudents(sp.get("from"), sp.get("to"), sp.get("class"), sp.get("q") ?? "");
 }

@@ -113,3 +113,10 @@ Beban: pindai beruntun saat jam masuk (misalnya 200 siswa dalam 15 menit).
 - [ ] Tombol mengarah ke Absensi pada tanggal itu; admin dapat merekonsiliasi dari sana, dan banner hilang setelah sesi ditutup atau semua siswa tercatat.
 - [ ] Hari libur dan hari ini tidak pernah muncul di banner. Tidak ada siswa yang otomatis menjadi Alpa.
 - [ ] Pengaturan > Aturan absensi memiliki "Tanggal mulai dipakai". Kosong: banner hari lalu tidak muncul. Diisi hari pertama pemakaian sungguhan: banner hanya menghitung hari sejak tanggal itu.
+
+## Laporan mingguan dan semester
+- [ ] Menu Laporan menampilkan kartu "Laporan mingguan" dan "Laporan semester".
+- [ ] Mingguan: pilih tanggal mana pun, rentang yang tampil Senin sampai Minggu; tombol "Minggu sebelumnya" dan "Minggu berikutnya" bekerja dan menjaga filter kelas.
+- [ ] Semester: pilih tahun ajaran dan Ganjil atau Genap; rentang Ganjil berakhir 31 Desember, Genap mulai 1 Januari.
+- [ ] Angka satu siswa pada laporan mingguan dan semester sama dengan laporan per siswa untuk rentang tanggal yang sama.
+- [ ] XLSX, CSV, PDF, dan Cetak berfungsi untuk keduanya (kop surat dan logo tampil); guru hanya melihat kelasnya.
