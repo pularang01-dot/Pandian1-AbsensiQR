@@ -10,7 +10,7 @@ import { CARD_TAGLINE, CARD_TITLE } from "@/lib/brand/card";
  * Isi QR HANYA token acak; nama, NISN, dan NIS tercetak sebagai teks biasa di kartu.
  */
 export function AttendanceCard({
-  token, name, nis, nisn, className, schoolName: rawSchoolName,
+  token, name, nis, nisn, schoolName: rawSchoolName,
 }: {
   token: string | null; name: string; nis: string; nisn?: string | null; className?: string | null; schoolName: string;
 }) {
@@ -113,9 +113,6 @@ export function AttendanceCard({
                 ? <span className="block font-bold" style={{ fontSize: u(size), lineHeight: 1.15, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden", overflowWrap: "anywhere" }} title={value}>{value}</span>
                 : <span className="block truncate font-bold" style={{ fontSize: u(size), lineHeight: 1.15 }} title={value}>{value}</span>}
             </span>
-            {label === "Nama Siswa" && className && (
-              <span className="ml-1 shrink-0 rounded-full bg-[#e6f0ff] font-semibold text-[#1c5bd6]" style={{ fontSize: u(2), padding: `${u(0.3)} ${u(1.1)}` }}>{className}</span>
-            )}
           </div>
         ))}
       </div>
