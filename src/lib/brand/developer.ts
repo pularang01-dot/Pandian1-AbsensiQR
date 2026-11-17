@@ -12,7 +12,7 @@ export function waLink(text: string): string {
   return `https://wa.me/${DEVELOPER.phoneIntl}?text=${encodeURIComponent(text.slice(0, 1200))}`;
 }
 
-export function errorReportText(e: { message: string; route: string | null; source: string; occurrences: number; digest: string | null; last_seen: string }, schoolName = "SDN Pandian 1 Sumenep"): string {
+export function errorReportText(e: { message: string; route: string | null; source: string; occurrences: number; digest: string | null; last_seen: string }, schoolName = "SDN Pandian I Sumenep"): string {
   return [
     `Halo Pak Viky, ada kesalahan di aplikasi Pandian Smart Attendance (${schoolName}).`,
     "",

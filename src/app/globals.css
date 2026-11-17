@@ -24,6 +24,8 @@
 }
 
 @media print {
+  @page { size: A4; margin: 10mm; }
+  .attendance-card, .attendance-card * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
   aside, header.app-topbar, .no-print { display: none !important; }
   body { background: #fff; }
   main { padding: 0 !important; }

@@ -3,7 +3,7 @@ export const COPYRIGHT = {
   year: 2026,
   app: "Pandian Smart Attendance",
   developer: "Viky Aditama",
-  team: "Tim PPL SDN Pandian 1 Sumenep",
+  team: "Tim PPL SDN Pandian I Sumenep",
   institution: "Universitas PGRI Sumenep",
 } as const;
 

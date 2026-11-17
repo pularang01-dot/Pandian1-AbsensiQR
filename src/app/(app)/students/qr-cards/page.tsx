@@ -7,6 +7,7 @@ import { EmptyState } from "@/components/ui/states";
 import { FilterBar, FilterField } from "@/components/ui/filter-bar";
 import { Select } from "@/components/ui/field";
 import { QrCard } from "@/components/students/qr-card";
+import { AttendanceCard } from "@/components/students/attendance-card";
 import { PrintButton } from "@/components/ui/print-button";
 import { asUuid, loadClasses, loadYears, pickYear } from "@/lib/data/lookups";
 import { one } from "@/lib/data/students";
@@ -14,25 +15,27 @@ import { one } from "@/lib/data/students";
 export const metadata: Metadata = { title: "Cetak Kartu QR" };
 export const dynamic = "force-dynamic";
 
-export default async function QrCardsPage({ searchParams }: { searchParams: Promise<{ class?: string }> }) {
+export default async function QrCardsPage({ searchParams }: { searchParams: Promise<{ class?: string; gaya?: string; student?: string }> }) {
   await requireRole(ADMIN_ROLES);
   const sp = await searchParams;
   const supabase = await createClient();
   const year = pickYear(await loadYears());
   const classes = await loadClasses(year?.id);
+  const gaya: "kartu" | "sederhana" = sp.gaya === "sederhana" ? "sederhana" : "kartu";
+  const studentId = asUuid(sp.student);
   const classId = classes.some((c) => c.id === asUuid(sp.class)) ? asUuid(sp.class) : null;
 
   const { data: school } = await supabase.from("system_settings").select("value").eq("key", "school.name").maybeSingle();
-  const schoolName = typeof school?.value === "string" && school.value ? school.value : "SDN PANDIAN 1 SUMENEP";
+  const schoolName = typeof school?.value === "string" && school.value ? school.value : "SDN PANDIAN I SUMENEP";
 
-  let cards: { id: string; name: string; nis: string; className: string | null; token: string | null }[] = [];
-  if (classId) {
+  let cards: { id: string; name: string; nis: string; nisn: string | null; className: string | null; token: string | null }[] = [];
+  if (classId || studentId) {
     const { data } = await supabase
       .from("student_class_assignments")
-      .select("students!inner(id, nis, full_name, status), classes(name)")
-      .eq("class_id", classId)
+      .select("students!inner(id, nis, nisn, full_name, status), classes(name)")
       .is("end_date", null)
-      .eq("students.status", "active");
+      .eq("students.status", "active")
+      .match(studentId ? { student_id: studentId } : { class_id: classId as string });
     const ids = (data ?? []).map((r) => one(r.students as unknown as { id: string } | { id: string }[] | null)?.id).filter(Boolean) as string[];
     const { data: tokens } = ids.length
       ? await supabase.from("student_qr_tokens").select("student_id, token").in("student_id", ids).eq("is_active", true)
@@ -40,8 +43,8 @@ export default async function QrCardsPage({ searchParams }: { searchParams: Prom
     const tokenBy = new Map((tokens ?? []).map((t) => [t.student_id, t.token]));
     cards = (data ?? [])
       .map((r) => {
-        const st = one(r.students as unknown as { id: string; nis: string; full_name: string } | { id: string; nis: string; full_name: string }[] | null);
-        return st ? { id: st.id, name: st.full_name, nis: st.nis, className: one(r.classes as unknown as { name: string } | { name: string }[] | null)?.name ?? null, token: tokenBy.get(st.id) ?? null } : null;
+        const st = one(r.students as unknown as { id: string; nis: string; nisn: string | null; full_name: string } | { id: string; nis: string; nisn: string | null; full_name: string }[] | null);
+        return st ? { id: st.id, name: st.full_name, nis: st.nis, nisn: st.nisn ?? null, className: one(r.classes as unknown as { name: string } | { name: string }[] | null)?.name ?? null, token: tokenBy.get(st.id) ?? null } : null;
       })
       .filter((c): c is NonNullable<typeof c> => c !== null)
       .sort((a, b) => a.name.localeCompare(b.name, "id"));
@@ -50,9 +53,15 @@ export default async function QrCardsPage({ searchParams }: { searchParams: Prom
   return (
     <>
       <div className="no-print">
-        <PageHeader title="Cetak kartu QR" description="Pilih kelas, lalu cetak. Simpan kartu dengan aman: siapa pun yang memegang kartu dapat dipindai oleh petugas, sehingga kartu hilang sebaiknya diterbitkan ulang." actions={cards.length > 0 ? <PrintButton /> : undefined} />
+        <PageHeader title="Cetak kartu QR" description={`Pilih gaya kartu dan kelas, lalu cetak.${gaya === "kartu" ? " Ukuran kartu ID 85,6 x 54 mm, 8 kartu per lembar A4. Di jendela cetak, aktifkan Grafik latar (Background graphics) dan atur Skala ke 100%." : ""} Simpan kartu dengan aman: siapa pun yang memegang kartu dapat dipindai oleh petugas, sehingga kartu hilang sebaiknya diterbitkan ulang.`} actions={cards.length > 0 ? <PrintButton /> : undefined} />
         <div className="card mb-6">
           <FilterBar action="/students/qr-cards" resetHref="/students/qr-cards">
+            <FilterField label="Gaya kartu" htmlFor="gaya">
+              <Select id="gaya" name="gaya" defaultValue={gaya}>
+                <option value="kartu">Kartu Kehadiran (desain sekolah)</option>
+                <option value="sederhana">Kartu QR sederhana</option>
+              </Select>
+            </FilterField>
             <FilterField label="Kelas" htmlFor="class">
               <Select id="class" name="class" defaultValue={classId ?? ""}>
                 <option value="">Pilih kelas</option>
@@ -63,14 +72,20 @@ export default async function QrCardsPage({ searchParams }: { searchParams: Prom
         </div>
       </div>
 
-      {!classId ? (
+      {!classId && !studentId ? (
         <div className="card no-print"><EmptyState title="Pilih kelas" description="Kartu QR dicetak per kelas agar mudah dibagikan oleh wali kelas." /></div>
       ) : cards.length === 0 ? (
         <div className="card no-print"><EmptyState title="Tidak ada siswa aktif di kelas ini" /></div>
       ) : (
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 print:grid-cols-3 print:gap-2">
-          {cards.map((c) => <QrCard key={c.id} compact token={c.token} name={c.name} nis={c.nis} className={c.className} schoolName={schoolName} />)}
-        </div>
+        gaya === "kartu" ? (
+          <div className="grid justify-center gap-4 sm:grid-cols-[repeat(auto-fill,85.6mm)] print:grid-cols-[repeat(2,85.6mm)] print:justify-between print:gap-x-0 print:gap-y-[5mm]">
+            {cards.map((c) => <AttendanceCard key={c.id} token={c.token} name={c.name} nis={c.nis} nisn={c.nisn} className={c.className} schoolName={schoolName} />)}
+          </div>
+        ) : (
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 print:grid-cols-3 print:gap-2">
+            {cards.map((c) => <QrCard key={c.id} compact token={c.token} name={c.name} nis={c.nis} className={c.className} schoolName={schoolName} />)}
+          </div>
+        )
       )}
     </>
   );

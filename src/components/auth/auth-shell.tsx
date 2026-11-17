@@ -13,7 +13,7 @@ export function AuthShell({ title, description, children }: { title: string; des
           <div className="mb-8 inline-flex rounded-2xl bg-white p-4 shadow-pop">
             <SchoolLogo size={112} priority />
           </div>
-          <p className="mb-3 text-sm font-semibold tracking-wide text-white/80">SDN PANDIAN 1 SUMENEP</p>
+          <p className="mb-3 text-sm font-semibold tracking-wide text-white/80">SDN PANDIAN I SUMENEP</p>
           <h2 className="text-3xl font-semibold leading-tight tracking-tight">
             Absensi, perizinan, dan administrasi siswa dalam satu sistem yang tertib.
           </h2>
@@ -30,7 +30,7 @@ export function AuthShell({ title, description, children }: { title: string; des
             <SchoolLogo size={52} priority />
             <div>
               <p className="text-sm font-semibold text-ink">PANDIAN SMART ATTENDANCE</p>
-              <p className="text-xs text-ink-muted">SDN PANDIAN 1 SUMENEP</p>
+              <p className="text-xs text-ink-muted">SDN PANDIAN I SUMENEP</p>
             </div>
           </div>
           <h1 className="text-2xl font-semibold tracking-tight text-ink">{title}</h1>

@@ -4,7 +4,7 @@ export default function manifest(): MetadataRoute.Manifest {
   return {
     name: "Pandian Smart Attendance",
     short_name: "Pandian Absensi",
-    description: "Sistem absensi, perizinan, dan administrasi siswa SDN Pandian 1 Sumenep.",
+    description: "Sistem absensi, perizinan, dan administrasi siswa SDN Pandian I Sumenep.",
     lang: "id",
     dir: "ltr",
     start_url: "/",

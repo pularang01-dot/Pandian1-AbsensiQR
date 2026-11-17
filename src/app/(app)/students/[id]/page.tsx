@@ -53,7 +53,7 @@ export default async function StudentDetailPage({ params }: { params: Promise<{ 
   const assignments = (s.student_class_assignments ?? []) as unknown as (AssignmentEmbed & { start_date: string })[];
   const open = assignments.find((a) => a.end_date === null);
   const className = open ? (one(open.classes)?.name ?? null) : null;
-  const schoolName = typeof schoolRes.data?.value === "string" && schoolRes.data.value ? schoolRes.data.value : "SDN PANDIAN 1 SUMENEP";
+  const schoolName = typeof schoolRes.data?.value === "string" && schoolRes.data.value ? schoolRes.data.value : "SDN PANDIAN I SUMENEP";
 
   const linked = ((links.data ?? []) as unknown as LinkRow[]).map((l) => {
     const p = one(l.parents as unknown as { id: string; profiles: unknown } | null);
@@ -152,7 +152,7 @@ export default async function StudentDetailPage({ params }: { params: Promise<{ 
               <div className="flex justify-center">
                 <QrCard token={tokenRes.data?.token ?? null} name={s.full_name} nis={s.nis} className={className} schoolName={schoolName} />
               </div>
-              <div className="mt-4 flex justify-center"><RegenerateQrButton studentId={s.id} /></div>
+              <div className="mt-4 flex flex-wrap items-center justify-center gap-2"><RegenerateQrButton studentId={s.id} /><Link href={`/students/qr-cards?student=${s.id}`} className="inline-flex h-11 items-center rounded-lg border border-line bg-surface px-4 text-sm font-medium hover:bg-canvas">Cetak kartu kehadiran</Link></div>
             </section>
           </aside>
         )}

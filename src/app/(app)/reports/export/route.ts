@@ -27,7 +27,7 @@ export async function GET(request: NextRequest) {
   if (t.error) return NextResponse.json({ error: t.error }, { status: 500 });
 
   const settings = await loadSettings();
-  const schoolName = str(settings["school.name"], "SDN PANDIAN 1 SUMENEP") || "SDN PANDIAN 1 SUMENEP";
+  const schoolName = str(settings["school.name"], "SDN PANDIAN I SUMENEP") || "SDN PANDIAN I SUMENEP";
   const schoolAddress = str(settings["school.address"]);
   const schoolPhone = str(settings["school.phone"]);
 

@@ -62,7 +62,7 @@ export default async function ErrorsPage() {
         <h2 id="dev-title" className="text-base font-semibold">Hubungi pengembang</h2>
         <p className="mt-1 text-sm">{DEVELOPER.name} ({DEVELOPER.role}) | WhatsApp <span className="tabular font-medium">{DEVELOPER.phoneDisplay}</span></p>
         <div className="mt-3 flex flex-wrap gap-2">
-          <a href={waLink("Halo Pak Viky, saya dari SDN Pandian 1 Sumenep. Saya ingin menanyakan soal aplikasi Pandian Smart Attendance.")} target="_blank" rel="noopener noreferrer" className="inline-flex h-11 items-center gap-2 rounded-lg bg-[#1a7f4b] px-4 text-sm font-medium text-white hover:bg-[#15683d]"><MessageCircle className="h-4 w-4" aria-hidden />Buka WhatsApp pengembang</a>
+          <a href={waLink("Halo Pak Viky, saya dari SDN Pandian I Sumenep. Saya ingin menanyakan soal aplikasi Pandian Smart Attendance.")} target="_blank" rel="noopener noreferrer" className="inline-flex h-11 items-center gap-2 rounded-lg bg-[#1a7f4b] px-4 text-sm font-medium text-white hover:bg-[#15683d]"><MessageCircle className="h-4 w-4" aria-hidden />Buka WhatsApp pengembang</a>
         </div>
         <ol className="mt-4 list-decimal space-y-1 pl-5 text-sm text-ink-muted">
           <li>Pada error yang bermasalah, tekan <span className="font-medium text-ink">Laporkan lewat WhatsApp</span>. WhatsApp terbuka dengan pesan yang sudah terisi, lalu tekan kirim.</li>
