@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { AlertTriangle, Camera, CameraOff, CheckCircle2, Search, ShieldCheck, WifiOff, XCircle } from "lucide-react";
+import { AlertTriangle, Camera, CameraOff, CheckCircle2, ClipboardList, History, Search, ShieldCheck, UserSearch, WifiOff, XCircle, Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Field, Input, Select, Textarea } from "@/components/ui/field";
 import { lookupQrAction, recordAttendanceAction, searchStudentsAction, type StudentHit } from "@/app/(app)/attendance/actions";
@@ -211,6 +211,8 @@ export function Scanner({ summary, isAdmin, dateLabel, scanAllowed, autoRecord =
   } as const;
   const BannerIcon = banner?.tone === "success" ? CheckCircle2 : banner?.tone === "warning" ? AlertTriangle : XCircle;
   const scanning = phase === "scanning" || phase === "confirm" || phase === "saving";
+  const recorded = Math.max(0, summary.total - summary.unrecorded);
+  const recordedPct = summary.total > 0 ? Math.round((recorded / summary.total) * 100) : 0;
 
   return (
     <div className="grid gap-6 lg:grid-cols-5">
@@ -226,21 +228,39 @@ export function Scanner({ summary, isAdmin, dateLabel, scanAllowed, autoRecord =
         )}
 
         <section className="card overflow-hidden">
-          <div className="relative aspect-[3/4] w-full bg-ink sm:aspect-video">
+          <div className="scanner-stage relative overflow-hidden aspect-[3/4] w-full bg-navy sm:aspect-video">
             <video ref={videoRef} className={cn("h-full w-full object-cover", !scanning && "hidden")} playsInline muted aria-label="Pratinjau kamera pemindai" />
+            <div className="absolute left-3 top-3 flex flex-wrap gap-2 text-xs font-medium">
+              <span className={cn("inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 backdrop-blur", phase === "scanning" ? "bg-success/90 text-white" : "bg-black/45 text-white")}>
+                <span aria-hidden className={cn("h-2 w-2 rounded-full", phase === "scanning" ? "scan-pulse bg-white" : "bg-white/60")} />
+                {phase === "scanning" ? "Pemindai aktif" : phase === "confirm" || phase === "saving" ? "Menunggu konfirmasi" : phase === "starting" ? "Memulai kamera" : "Pemindai siap"}
+              </span>
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-black/45 px-3 py-1.5 text-white backdrop-blur">
+                {autoRecord ? <Zap className="h-3.5 w-3.5 text-[#F5B82E]" aria-hidden /> : <ShieldCheck className="h-3.5 w-3.5" aria-hidden />}
+                {autoRecord ? "Mode cepat" : "Dengan konfirmasi"}
+              </span>
+            </div>
             {scanning && phase === "scanning" && (
               <div aria-hidden className="pointer-events-none absolute inset-0 flex items-center justify-center">
-                <div className="h-3/5 max-h-72 w-3/5 max-w-72 rounded-2xl border-2 border-white/80 shadow-[0_0_0_9999px_rgba(0,0,0,0.35)]" />
+                <div className="relative h-3/5 max-h-72 w-3/5 max-w-72 shadow-[0_0_0_9999px_rgba(10,22,40,0.55)]">
+                  <span className="absolute left-0 top-0 h-8 w-8 rounded-tl-2xl border-l-4 border-t-4 border-[#F5B82E]" />
+                  <span className="absolute right-0 top-0 h-8 w-8 rounded-tr-2xl border-r-4 border-t-4 border-[#F5B82E]" />
+                  <span className="absolute bottom-0 left-0 h-8 w-8 rounded-bl-2xl border-b-4 border-l-4 border-[#F5B82E]" />
+                  <span className="absolute bottom-0 right-0 h-8 w-8 rounded-br-2xl border-b-4 border-r-4 border-[#F5B82E]" />
+                  <span className="scan-line absolute inset-x-3 top-0 h-0.5 rounded-full bg-[#F5B82E]/90" />
+                </div>
               </div>
             )}
             {!scanning && (
-              <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 px-6 text-center text-white/80">
-                {camIssue ? <CameraOff className="h-10 w-10" aria-hidden /> : <Camera className="h-10 w-10" aria-hidden />}
-                <p className="max-w-sm text-sm">{camIssue ? CAM_TEXT[camIssue] : phase === "starting" ? "Memulai kamera. Setujui permintaan izin kamera bila muncul." : "Tekan Mulai pemindai lalu arahkan kamera ke kartu QR siswa."}</p>
+              <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 px-6 text-center text-white">
+                <span className="flex h-20 w-20 items-center justify-center rounded-full bg-white/10 ring-8 ring-white/5">
+                  {camIssue ? <CameraOff className="h-9 w-9" aria-hidden /> : <Camera className="h-9 w-9" aria-hidden />}
+                </span>
+                <p className="max-w-sm text-sm leading-relaxed text-white/80">{camIssue ? CAM_TEXT[camIssue] : phase === "starting" ? "Memulai kamera. Setujui permintaan izin kamera bila muncul." : "Tekan Mulai pemindai lalu arahkan kamera ke kartu QR siswa."}</p>
               </div>
             )}
           </div>
-          <div className="flex flex-col gap-3 border-t border-line p-4 sm:flex-row sm:items-end">
+          <div className="flex flex-col gap-3 border-t border-line bg-surface p-4 sm:flex-row sm:items-end">
             {!scanning ? (
               <Button size="lg" onClick={() => startScanner()} loading={phase === "starting"} disabled={!online}><Camera className="h-5 w-5" aria-hidden />Mulai pemindai</Button>
             ) : (
@@ -258,24 +278,31 @@ export function Scanner({ summary, isAdmin, dateLabel, scanAllowed, autoRecord =
         </section>
 
         {banner && (
-          <div role="status" aria-live="polite" className={cn("flex items-start gap-3 rounded-lg border px-4 py-3 text-sm font-medium", bannerStyle[banner.tone])}>
-            <BannerIcon className="mt-0.5 h-5 w-5 shrink-0" aria-hidden />
+          <div role="status" aria-live="polite" className={cn("flex items-start gap-3 rounded-xl border px-4 py-3.5 text-base font-semibold shadow-card", bannerStyle[banner.tone])}>
+            <BannerIcon className="mt-0.5 h-6 w-6 shrink-0" aria-hidden />
             <p>{banner.text}</p>
           </div>
         )}
 
         {pending && (
-          <section className="card border-brand p-5 ring-2 ring-brand/20" aria-live="polite">
-            <div className="flex items-start gap-3">
-              <ShieldCheck className="mt-0.5 h-5 w-5 shrink-0 text-brand" aria-hidden />
+          <section className="card overflow-hidden border-brand ring-2 ring-brand/20" aria-live="polite">
+            <div className="flex items-center gap-2 bg-brand-light px-5 py-2.5 text-sm font-medium text-brand">
+              <ShieldCheck className="h-4 w-4" aria-hidden />Konfirmasi identitas siswa
+            </div>
+            <div className="flex items-start gap-4 p-5">
+              <span aria-hidden className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full bg-navy text-xl font-semibold text-white">
+                {(pending.student.full_name ?? "?").trim().split(/\s+/).slice(0, 2).map((w) => w[0]).join("").toUpperCase()}
+              </span>
               <div className="min-w-0 flex-1">
-                <p className="text-xs font-semibold uppercase tracking-wide text-ink-muted">Konfirmasi identitas siswa</p>
-                <p className="mt-1 text-2xl font-semibold tracking-tight">{pending.student.full_name}</p>
-                <p className="tabular text-sm text-ink-muted">NIS {pending.student.nis}{pending.student.class_name ? ` | Kelas ${pending.student.class_name}` : ""}</p>
+                <p className="text-2xl font-semibold leading-tight tracking-tight">{pending.student.full_name}</p>
+                <p className="mt-1 flex flex-wrap gap-2 text-sm">
+                  <span className="tabular rounded-full bg-canvas px-2.5 py-0.5 text-ink-muted">NIS {pending.student.nis}</span>
+                  {pending.student.class_name && <span className="rounded-full bg-canvas px-2.5 py-0.5 text-ink-muted">Kelas {pending.student.class_name}</span>}
+                </p>
                 <p className="mt-3 rounded-lg bg-canvas px-3 py-2 text-sm">Pastikan siswa yang berdiri di depan Anda adalah siswa ini. QR saja bukan bukti kehadiran.</p>
               </div>
             </div>
-            <div className="mt-4 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+            <div className="flex flex-col-reverse gap-2 border-t border-line bg-canvas/50 px-5 py-4 sm:flex-row sm:justify-end">
               <Button variant="outline" size="lg" onClick={cancelQr} disabled={phase === "saving"}>Bukan siswa ini / batal</Button>
               <Button size="lg" onClick={confirmQr} loading={phase === "saving"}>Konfirmasi hadir</Button>
             </div>
@@ -283,8 +310,11 @@ export function Scanner({ summary, isAdmin, dateLabel, scanAllowed, autoRecord =
         )}
 
         <section className="card p-5">
-          <h2 className="text-base font-semibold">Absensi manual</h2>
-          <p className="mb-4 text-sm text-ink-muted">Untuk QR rusak/hilang atau kondisi khusus. Catatan alasan wajib dan tercatat atas nama Anda.</p>
+          <h2 className="flex items-center gap-2.5 text-base font-semibold">
+            <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand-light text-brand"><UserSearch className="h-4 w-4" aria-hidden /></span>
+            Absensi manual
+          </h2>
+          <p className="mb-4 mt-1 text-sm text-ink-muted">Untuk QR rusak/hilang atau kondisi khusus. Catatan alasan wajib dan tercatat atas nama Anda.</p>
           <Field label="Cari nama atau NIS" htmlFor="manual-q">
             <div className="relative">
               <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-muted" aria-hidden />
@@ -328,25 +358,39 @@ export function Scanner({ summary, isAdmin, dateLabel, scanAllowed, autoRecord =
       </div>
 
       <aside className="space-y-4 lg:col-span-2">
-        <section className="card p-5">
-          <h2 className="text-base font-semibold">Ringkasan hari ini</h2>
-          <p className="mb-4 text-sm text-ink-muted">{dateLabel}</p>
-          <dl className="grid grid-cols-2 gap-3 text-sm">
-            {[
-              ["Siswa aktif", summary.total], ["Hadir", summary.present], ["Terlambat", summary.late], ["Sakit", summary.sick],
-              ["Izin", summary.permission], ["Kegiatan resmi", summary.official], ["Alpa", summary.unexcused], ["Belum diverifikasi", summary.unverified],
-            ].map(([k, v]) => (
-              <div key={String(k)} className="rounded-lg bg-canvas px-3 py-2.5">
-                <dt className="text-xs text-ink-muted">{k}</dt>
-                <dd className="tabular text-xl font-semibold">{v}</dd>
-              </div>
-            ))}
-          </dl>
-          <p className="tabular mt-3 text-sm text-ink-muted">{summary.unrecorded} siswa belum memiliki catatan. Siswa tanpa catatan tidak otomatis dianggap alpa sebelum rekonsiliasi.</p>
+        <section className="card overflow-hidden">
+          <div className="dash-hero p-5 text-white">
+            <h2 className="flex items-center gap-2 text-base font-semibold"><ClipboardList className="h-4 w-4" aria-hidden />Ringkasan hari ini</h2>
+            <p className="mt-0.5 text-sm text-white/70">{dateLabel}</p>
+            <p className="tabular mt-4 text-3xl font-bold leading-none">{recorded}<span className="text-lg font-medium text-white/70"> dari {summary.total}</span></p>
+            <p className="mt-1 text-xs text-white/70">siswa sudah tercatat ({recordedPct}%)</p>
+            <div className="mt-3 h-2.5 overflow-hidden rounded-full bg-white/15" role="progressbar" aria-valuemin={0} aria-valuemax={summary.total} aria-valuenow={recorded} aria-label="Siswa yang sudah tercatat">
+              <div className="h-full rounded-full bg-[#F5B82E]" style={{ width: `${recordedPct}%` }} />
+            </div>
+          </div>
+          <div className="p-5">
+            <dl className="grid grid-cols-2 gap-3 text-sm">
+              {([
+                ["Hadir", summary.present, "bg-success"], ["Terlambat", summary.late, "bg-warning"], ["Sakit", summary.sick, "bg-info"], ["Izin", summary.permission, "bg-info"],
+                ["Kegiatan resmi", summary.official, "bg-ink-muted"], ["Alpa", summary.unexcused, "bg-danger"], ["Belum diverifikasi", summary.unverified, "bg-ink-muted"], ["Siswa aktif", summary.total, "bg-brand"],
+              ] as const).map(([k, v, dot]) => (
+                <div key={k} className="rounded-lg bg-canvas px-3 py-2.5">
+                  <dt className="flex items-center gap-1.5 text-xs text-ink-muted"><span aria-hidden className={cn("h-2 w-2 rounded-full", dot)} />{k}</dt>
+                  <dd className="tabular text-xl font-semibold">{v}</dd>
+                </div>
+              ))}
+            </dl>
+            <p className="tabular mt-3 text-sm text-ink-muted">{summary.unrecorded} siswa belum memiliki catatan. Siswa tanpa catatan tidak otomatis dianggap alpa sebelum rekonsiliasi.</p>
+          </div>
         </section>
 
         <section className="card">
-          <div className="border-b border-line px-5 py-4"><h2 className="text-base font-semibold">Aktivitas sesi ini</h2></div>
+          <div className="border-b border-line px-5 py-4">
+            <h2 className="flex items-center gap-2.5 text-base font-semibold">
+              <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand-light text-brand"><History className="h-4 w-4" aria-hidden /></span>
+              Aktivitas sesi ini
+            </h2>
+          </div>
           {log.length === 0 ? (
             <p className="px-5 py-6 text-sm text-ink-muted">Belum ada pemindaian pada sesi ini.</p>
           ) : (
