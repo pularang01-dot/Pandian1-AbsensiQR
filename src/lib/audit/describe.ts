@@ -16,7 +16,7 @@ export type NameMap = Record<string, string>;
 export type CategoryKey = "all" | "akun" | "siswa" | "absensi" | "izin" | "pengaturan" | "data";
 export const CATEGORIES: { key: CategoryKey; label: string; tables: string[]; actions: string[] }[] = [
   { key: "all", label: "Semua administrasi", tables: [], actions: [] },
-  { key: "akun", label: "Akun dan peran", tables: ["profiles", "user_roles", "user_admin"], actions: ["create_user", "delete_user", "activate_user", "deactivate_user", "set_roles", "link_student", "resend_invite", "deactivate_orphan_parents", "account_hygiene_run", "account_hygiene_now"] },
+  { key: "akun", label: "Akun dan peran", tables: ["profiles", "user_roles", "user_admin"], actions: ["create_user", "delete_user", "activate_user", "deactivate_user", "set_roles", "update_user_profile", "link_student", "resend_invite", "deactivate_orphan_parents", "account_hygiene_run", "account_hygiene_now"] },
   { key: "siswa", label: "Siswa dan kelas", tables: ["students", "classes", "academic_years", "student_class_assignments", "parent_student_links", "student_qr_tokens", "class_homeroom_history"], actions: ["import_students", "assign_students_class", "delete_students", "manual_delete_students", "graduate_class", "promote_students"] },
   { key: "absensi", label: "Absensi", tables: ["attendance_records", "attendance_sessions", "attendance_corrections"], actions: ["class_attendance", "class_attendance_backdated", "correct_attendance", "reconcile"] },
   { key: "izin", label: "Izin, dispensasi, pulang awal", tables: ["permission_requests", "dispensations", "dispensation_students", "early_dismissal_requests", "early_dismissal_handover_logs"], actions: ["permission_approve", "permission_reject", "confirm_participation"] },
@@ -120,7 +120,7 @@ const CUSTOM: Record<string, string> = {
   import_students: "Mengimpor data siswa", delete_students: "Menghapus data siswa", manual_delete_students: "Menghapus siswa demo (jalur pemilik)",
   graduate_class: "Meluluskan siswa satu kelas", promote_students: "Memproses kenaikan kelas",
   create_user: "Membuat akun pengguna", delete_user: "Menghapus akun pengguna", activate_user: "Mengaktifkan akun", deactivate_user: "Menonaktifkan akun",
-  set_roles: "Mengubah peran pengguna", link_student: "Menautkan orang tua dengan siswa", resend_invite: "Mengirim ulang undangan",
+  set_roles: "Mengubah peran pengguna", update_user_profile: "Mengubah nama atau telepon pengguna", link_student: "Menautkan orang tua dengan siswa", resend_invite: "Mengirim ulang undangan",
   deactivate_orphan_parents: "Menonaktifkan akun orang tua tanpa anak aktif", account_hygiene_run: "Penonaktifan akun otomatis (terjadwal)",
   account_hygiene_now: "Penonaktifan akun dijalankan manual", backup_started: "Mulai membuat cadangan data", backup_completed: "Selesai membuat cadangan data",
   restore_completed: "Memulihkan data dari cadangan",

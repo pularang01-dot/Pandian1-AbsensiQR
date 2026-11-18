@@ -4,12 +4,12 @@ import { ADMIN_ROLES, ROLES, type Role } from "@/lib/auth/roles";
 import { requireRole } from "@/lib/auth/session";
 import { createClient } from "@/lib/supabase/server";
 import { PageHeader } from "@/components/ui/page-header";
-import { Field, Select } from "@/components/ui/field";
+import { Field, Input, Select } from "@/components/ui/field";
 import { SimpleForm } from "@/components/settings/simple-form";
 import { ConfirmAction } from "@/components/settings/row-action";
 import { asUuid } from "@/lib/data/lookups";
 import { one, openClassName, type AssignmentEmbed } from "@/lib/data/students";
-import { linkStudentAction, unlinkStudentAction } from "../actions";
+import { linkStudentAction, unlinkStudentAction, updateUserProfileAction } from "../actions";
 import { RoleEditor } from "./role-editor";
 
 export const metadata: Metadata = { title: "Rincian Pengguna" };
@@ -37,6 +37,22 @@ export default async function UserDetailPage({ params }: { params: Promise<{ id:
     <>
       <PageHeader title={p.full_name} description={`${p.phone ?? "Tanpa telepon"} | ${p.is_active ? "Aktif" : "Nonaktif"}`} />
       <div className="space-y-6">
+        <section className="card p-5">
+          <h2 className="mb-3 text-base font-semibold">Data pengguna</h2>
+          {locked && me.id !== p.id ? (
+            <p className="text-sm text-ink-muted">Akun ini memiliki peran di luar wewenang Anda. Hanya Super Admin yang dapat mengubah datanya.</p>
+          ) : (
+            <SimpleForm action={updateUserProfileAction} submitLabel="Simpan data">
+              <input type="hidden" name="id" value={p.id} />
+              <div className="grid gap-4 sm:grid-cols-2">
+                <Field label="Nama lengkap" htmlFor="full_name" required><Input id="full_name" name="full_name" defaultValue={p.full_name} maxLength={150} autoComplete="off" /></Field>
+                <Field label="Telepon" htmlFor="phone" hint="Opsional. Kosongkan untuk menghapus nomor."><Input id="phone" name="phone" defaultValue={p.phone ?? ""} maxLength={30} inputMode="tel" autoComplete="off" /></Field>
+              </div>
+              <p className="text-xs text-ink-muted">Email dan kata sandi tidak dapat diubah dari sini.</p>
+            </SimpleForm>
+          )}
+        </section>
+
         <section className="card p-5">
           <h2 className="mb-3 text-base font-semibold">Peran</h2>
           {locked && <p className="mb-3 text-sm text-ink-muted">Akun ini memiliki peran di luar wewenang Anda. Hanya Super Admin yang dapat mengubahnya.</p>}

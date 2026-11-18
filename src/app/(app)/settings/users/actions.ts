@@ -228,3 +228,28 @@ export async function deactivateOrphanParentsAction(): Promise<ActionState> {
   revalidatePath("/settings/users");
   return { ok: true, message: n > 0 ? `${n} akun orang tua dinonaktifkan. Riwayat tetap tersimpan dan akun dapat diaktifkan kembali.` : "Tidak ada akun yang perlu dinonaktifkan." };
 }
+
+const profileSchema = z.object({
+  id: z.string().uuid(),
+  full_name: z.string().trim().min(2, "Nama minimal 2 karakter.").max(150, "Nama maksimal 150 karakter."),
+  phone: z.string().trim().max(30, "Telepon maksimal 30 karakter.").regex(/^[0-9+\-\s()]*$/, "Telepon hanya boleh berisi angka, spasi, +, -, dan tanda kurung.").optional().transform((v) => (v ? v : null)),
+});
+
+/** Ubah nama dan nomor telepon pengguna. Email dan kata sandi tidak diubah di sini. */
+export async function updateUserProfileAction(_p: ActionState, fd: FormData): Promise<ActionState> {
+  const caller = await requireRole(ADMIN_ROLES);
+  const parsed = profileSchema.safeParse({ id: fd.get("id") ?? "", full_name: fd.get("full_name") ?? "", phone: fd.get("phone") ?? "" });
+  if (!parsed.success) return { ok: false, fieldErrors: zodFieldErrors(parsed.error) };
+  const v = parsed.data;
+  const roles = await targetRoles(v.id);
+  if (roles.some((r) => !manageable(caller.roles).includes(r)) && v.id !== caller.id) return { ok: false, message: "Anda tidak berwenang mengubah akun dengan peran ini." };
+  const admin = createAdminClient();
+  const { data: before } = await admin.from("profiles").select("full_name, phone").eq("id", v.id).maybeSingle();
+  if (!before) return { ok: false, message: "Pengguna tidak ditemukan." };
+  const { error } = await admin.from("profiles").update({ full_name: v.full_name, phone: v.phone }).eq("id", v.id);
+  if (error) return { ok: false, message: friendlyDbError(error) };
+  await audit(caller.id, "update_user_profile", v.id, { before: { full_name: before.full_name, phone: before.phone }, after: { full_name: v.full_name, phone: v.phone } });
+  revalidatePath("/settings/users");
+  revalidatePath(`/settings/users/${v.id}`);
+  return { ok: true, message: "Data pengguna disimpan." };
+}

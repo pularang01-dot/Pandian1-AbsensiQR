@@ -178,6 +178,7 @@ export default async function UsersPage({ searchParams }: { searchParams: Promis
           {detail(p)}
         </div>
         <div className="flex flex-wrap items-center gap-2">
+          <Link href={`/settings/users/${p.id}`} className="inline-flex h-9 items-center rounded-lg border border-line bg-surface px-3 text-sm font-medium text-ink hover:bg-canvas">Ubah data</Link>
           {canManage && p.is_active && <ConfirmAction label="Kirim ulang undangan" title={`Kirim ulang undangan ke ${p.full_name}?`} description="Tautan untuk membuat atau mengganti kata sandi dikirim ke email pengguna." confirmLabel="Kirim" run={resendInviteAction.bind(null, p.id)} />}
           {canManage && (p.is_active
             ? <ConfirmAction label="Nonaktifkan" title={`Nonaktifkan ${p.full_name}?`} description={p.group === "teacher" ? "Pengguna tidak dapat masuk. Kelas yang ia pegang dikosongkan otomatis dan perlu wali pengganti. Riwayat tetap tersimpan." : "Pengguna tidak dapat masuk dan tidak melihat data apa pun. Riwayat tetap tersimpan."} confirmLabel="Nonaktifkan" danger run={setUserActiveAction.bind(null, p.id, false)} />
