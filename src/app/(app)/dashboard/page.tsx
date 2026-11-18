@@ -1,13 +1,12 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import {
-  AlertTriangle, ArrowRight, CheckCircle2, Clock, FileText, Flag, HelpCircle, Stethoscope, Users, UserX,
+  Activity, AlertTriangle, Bell, CheckCircle2, ClipboardCheck, Clock, FileText, Flag, HelpCircle, History, ScanLine, ShieldCheck, Stethoscope, Users, UserX,
 } from "lucide-react";
 import { STAFF_ROLES, APPROVER_ROLES } from "@/lib/auth/roles";
 import { requireRole } from "@/lib/auth/session";
 import { createClient } from "@/lib/supabase/server";
-import { PageHeader } from "@/components/ui/page-header";
-import { StatCard } from "@/components/ui/stat-card";
+import { ChartPanel, DashboardHero, Initials, KpiTile, MiniStat, PanelHeader, type HeroAction } from "@/components/dashboard/dashboard-ui";
 import { StatusBadge, ATTENDANCE_STATUS } from "@/components/ui/status-badge";
 import { EmptyState, ErrorState } from "@/components/ui/states";
 import { Input, Select } from "@/components/ui/field";
@@ -113,6 +112,15 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
   const donut = STATUS_KEYS.map((k) => ({ key: k, label: ATTENDANCE_STATUS[k].label, value: c[k] }));
   const hasAnyRecord = Object.values(c).some((n) => n > 0);
 
+  const hour = Number(new Date().toLocaleString("en-GB", { timeZone: "Asia/Jakarta", hour: "numeric", hour12: false })) % 24;
+  const greeting = hour < 11 ? "Selamat pagi" : hour < 15 ? "Selamat siang" : hour < 18 ? "Selamat sore" : "Selamat malam";
+  const canTakeAttendance = user.roles.some((r) => ["super_admin", "school_admin", "teacher", "operator"].includes(r));
+  const heroActions: HeroAction[] = [
+    ...(canTakeAttendance ? [{ href: "/attendance/class", label: "Absen kelas", icon: ClipboardCheck }, { href: "/attendance/scanner", label: "Pemindai QR", icon: ScanLine }] : []),
+    { href: "/attendance", label: "Data absensi", icon: Activity },
+    { href: "/permissions", label: "Izin dan sakit", icon: FileText },
+  ];
+
   const barData = data.byClass.map((r) => ({
     name: r.name,
     hadir: r.counts.present,
@@ -122,9 +130,17 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
 
   return (
     <>
-      <PageHeader
-        title="Dashboard"
-        description={`Ringkasan kehadiran ${formatTanggal(date)}${year ? ` | Tahun ajaran ${year.name}` : ""}`}
+      <DashboardHero
+        greeting={greeting}
+        name={user.fullName}
+        dateLabel={formatTanggal(date)}
+        yearName={year?.name}
+        isToday={date === todayISO()}
+        rate={data.rate}
+        present={c.present}
+        late={c.late}
+        unrecorded={data.unrecorded}
+        actions={heroActions}
       />
 
       {backup?.stale && (
@@ -215,15 +231,19 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
         </div>
       ) : (
         <>
-          <section aria-label="Statistik kehadiran" className="mb-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-            <StatCard label="Siswa aktif" value={data.totalStudents} icon={Users} tone="brand" />
-            <StatCard label="Hadir" value={c.present} icon={CheckCircle2} tone="success" helper={`Persentase kehadiran ${formatRate(data.rate)}`} />
-            <StatCard label="Terlambat" value={c.late} icon={Clock} tone="warning" />
-            <StatCard label="Sakit" value={c.sick} icon={Stethoscope} tone="info" />
-            <StatCard label="Izin disetujui" value={c.permission} icon={FileText} tone="info" />
-            <StatCard label="Kegiatan resmi sekolah" value={c.official_activity} icon={Flag} tone="neutral" />
-            <StatCard label="Alpa" value={c.unexcused} icon={UserX} tone="danger" />
-            <StatCard label="Belum diverifikasi" value={c.unverified} icon={HelpCircle} tone="neutral" helper={`${data.unrecorded} siswa belum memiliki catatan`} />
+          <section aria-label="Statistik kehadiran" className="mb-6 space-y-3">
+            <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
+              <KpiTile label="Siswa aktif" value={data.totalStudents} icon={Users} tone="brand" />
+              <KpiTile label="Hadir" value={c.present} icon={CheckCircle2} tone="success" helper={`Persentase kehadiran ${formatRate(data.rate)}`} />
+              <KpiTile label="Terlambat" value={c.late} icon={Clock} tone="warning" />
+              <KpiTile label="Alpa" value={c.unexcused} icon={UserX} tone="danger" />
+            </div>
+            <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
+              <MiniStat label="Sakit" value={c.sick} icon={Stethoscope} tone="info" />
+              <MiniStat label="Izin disetujui" value={c.permission} icon={FileText} tone="info" />
+              <MiniStat label="Kegiatan resmi sekolah" value={c.official_activity} icon={Flag} tone="neutral" />
+              <MiniStat label="Belum diverifikasi" value={c.unverified} icon={HelpCircle} tone="neutral" helper={`${data.unrecorded} siswa belum memiliki catatan`} />
+            </div>
           </section>
 
           {!data.hasSession && (
@@ -233,21 +253,17 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
           )}
 
           <section className="mb-6 grid gap-6 lg:grid-cols-2">
-            <div className="card p-5">
-              <h2 className="text-base font-semibold">Distribusi kehadiran</h2>
-              <p className="mb-2 text-sm text-ink-muted">Catatan pada tanggal terpilih</p>
+            <ChartPanel title="Distribusi kehadiran" subtitle="Catatan pada tanggal terpilih">
               {hasAnyRecord ? <DistributionDonut data={donut} /> : <EmptyState title="Belum ada catatan" description="Grafik muncul setelah absensi tercatat." />}
-            </div>
-            <div className="card p-5">
-              <h2 className="text-base font-semibold">Tren kehadiran 14 hari</h2>
-              <p className="mb-2 text-sm text-ink-muted">Persentase kehadiran fisik per hari sekolah</p>
+            </ChartPanel>
+            <ChartPanel title="Tren kehadiran 14 hari" subtitle="Persentase kehadiran fisik per hari sekolah">
               {data.trend.length > 0 ? <TrendLine data={data.trend} /> : <EmptyState title="Belum ada tren" description="Data tren muncul setelah ada hari dengan absensi." />}
-            </div>
+            </ChartPanel>
           </section>
 
           <section className="card mb-6 p-5">
             <h2 className="text-base font-semibold">Ringkasan per kelas</h2>
-            <p className="mb-4 text-sm text-ink-muted">Hadir, terlambat, dan sisanya (belum hadir atau belum tercatat)</p>
+            <p className="mb-4 mt-0.5 text-sm text-ink-muted">Hadir, terlambat, dan sisanya (belum hadir atau belum tercatat)</p>
             {barData.length > 0 ? (
               <>
                 <ClassBars data={barData} />
@@ -255,18 +271,18 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
                   <table className="w-full text-left text-sm">
                     <caption className="sr-only">Tabel kehadiran per kelas</caption>
                     <thead>
-                      <tr className="border-b border-line text-xs uppercase tracking-wide text-ink-muted">
-                        <th scope="col" className="py-2 pr-4 font-semibold">Kelas</th>
+                      <tr className="border-b border-line bg-canvas/60 text-xs text-ink-muted">
+                        <th scope="col" className="rounded-l-lg px-3 py-2 font-semibold">Kelas</th>
                         <th scope="col" className="px-4 py-2 text-right font-semibold">Siswa</th>
                         <th scope="col" className="px-4 py-2 text-right font-semibold">Hadir</th>
                         <th scope="col" className="px-4 py-2 text-right font-semibold">Terlambat</th>
-                        <th scope="col" className="px-4 py-2 text-right font-semibold">Persentase</th>
+                        <th scope="col" className="rounded-r-lg px-4 py-2 text-right font-semibold">Persentase</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-line">
                       {data.byClass.map((r) => (
                         <tr key={r.id ?? "none"}>
-                          <th scope="row" className="py-2.5 pr-4 font-medium">{r.name}</th>
+                          <th scope="row" className="px-3 py-2.5 font-medium">{r.name}</th>
                           <td className="tabular px-4 py-2.5 text-right">{r.total}</td>
                           <td className="tabular px-4 py-2.5 text-right">{r.counts.present}</td>
                           <td className="tabular px-4 py-2.5 text-right">{r.counts.late}</td>
@@ -285,11 +301,8 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
       )}
 
       <section className="grid gap-6 lg:grid-cols-2">
-        <div className="card">
-          <div className="flex items-center justify-between border-b border-line px-5 py-4">
-            <h2 className="text-base font-semibold">Pengajuan izin menunggu</h2>
-            <Link href="/permissions" className="inline-flex items-center gap-1 text-sm font-medium text-brand hover:underline">Lihat semua<ArrowRight className="h-4 w-4" aria-hidden /></Link>
-          </div>
+        <div className="card overflow-hidden">
+          <PanelHeader icon={FileText} title="Pengajuan izin menunggu" href="/permissions" />
           {(pending.data ?? []).length === 0 ? (
             <EmptyState title="Tidak ada antrean" description="Semua pengajuan izin sudah ditangani." />
           ) : (
@@ -298,8 +311,9 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
                 const s = (Array.isArray(p.students) ? p.students[0] : p.students) as { full_name: string } | null;
                 return (
                   <li key={p.id}>
-                    <Link href={`/permissions/${p.id}`} className="flex items-center justify-between gap-3 px-5 py-3 hover:bg-canvas/60">
-                      <div className="min-w-0">
+                    <Link href={`/permissions/${p.id}`} className="flex items-center gap-3 px-5 py-3 transition-colors hover:bg-canvas/70">
+                      <Initials name={s?.full_name ?? "Siswa"} />
+                      <div className="min-w-0 flex-1">
                         <p className="truncate text-sm font-medium">{s?.full_name ?? "Siswa"}</p>
                         <p className="text-xs text-ink-muted">
                           {p.category === "sick" ? "Sakit" : "Izin"} | {formatTanggal(p.start_date, "d MMM")}{p.end_date !== p.start_date ? ` - ${formatTanggal(p.end_date, "d MMM")}` : ""}
@@ -315,11 +329,8 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
           )}
         </div>
 
-        <div className="card">
-          <div className="flex items-center justify-between border-b border-line px-5 py-4">
-            <h2 className="text-base font-semibold">Aktivitas absensi terbaru</h2>
-            <Link href="/attendance" className="inline-flex items-center gap-1 text-sm font-medium text-brand hover:underline">Lihat semua<ArrowRight className="h-4 w-4" aria-hidden /></Link>
-          </div>
+        <div className="card overflow-hidden">
+          <PanelHeader icon={History} title="Aktivitas absensi terbaru" href="/attendance" />
           {(recent.data ?? []).length === 0 ? (
             <EmptyState title="Belum ada aktivitas" description="Catatan absensi terbaru pada tanggal ini akan tampil di sini." />
           ) : (
@@ -327,8 +338,9 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
               {(recent.data ?? []).map((r) => {
                 const s = (Array.isArray(r.students) ? r.students[0] : r.students) as { full_name: string } | null;
                 return (
-                  <li key={r.id} className="flex items-center justify-between gap-3 px-5 py-3">
-                    <div className="min-w-0">
+                  <li key={r.id} className="flex items-center gap-3 px-5 py-3">
+                    <Initials name={s?.full_name ?? "Siswa"} />
+                    <div className="min-w-0 flex-1">
                       <p className="truncate text-sm font-medium">{s?.full_name ?? "Siswa"}</p>
                       <p className="tabular text-xs text-ink-muted">{r.checked_in_at ? formatWaktu(r.checked_in_at) : formatWaktu(r.created_at)}</p>
                     </div>
@@ -340,17 +352,20 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
           )}
         </div>
 
-        <div className="card">
-          <div className="border-b border-line px-5 py-4"><h2 className="text-base font-semibold">Notifikasi penting</h2></div>
+        <div className="card overflow-hidden">
+          <PanelHeader icon={Bell} title="Notifikasi penting" />
           {(notifs.data ?? []).length === 0 ? (
             <EmptyState title="Tidak ada notifikasi" />
           ) : (
             <ul className="divide-y divide-line">
               {(notifs.data ?? []).map((n) => (
-                <li key={n.id} className="px-5 py-3">
-                  {n.link ? <Link href={n.link} className="text-sm font-medium hover:text-brand">{n.title}</Link> : <p className="text-sm font-medium">{n.title}</p>}
-                  {n.body && <p className="mt-0.5 line-clamp-2 text-xs text-ink-muted">{n.body}</p>}
-                  <p className="mt-0.5 text-[11px] text-ink-muted">{formatTanggal(n.created_at, "d MMM yyyy, HH:mm")}{n.is_read ? "" : " | Baru"}</p>
+                <li key={n.id} className="flex gap-3 px-5 py-3">
+                  <span className={n.is_read ? "mt-1.5 h-2 w-2 shrink-0 rounded-full bg-line" : "mt-1.5 h-2 w-2 shrink-0 rounded-full bg-brand"} aria-hidden />
+                  <div className="min-w-0">
+                    {n.link ? <Link href={n.link} className="text-sm font-medium hover:text-brand">{n.title}</Link> : <p className="text-sm font-medium">{n.title}</p>}
+                    {n.body && <p className="mt-0.5 line-clamp-2 text-xs text-ink-muted">{n.body}</p>}
+                    <p className="mt-0.5 text-[11px] text-ink-muted">{formatTanggal(n.created_at, "d MMM yyyy, HH:mm")}{n.is_read ? "" : " | Baru"}</p>
+                  </div>
                 </li>
               ))}
             </ul>
@@ -358,8 +373,8 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
         </div>
 
         {isApprover && (
-          <div className="card">
-            <div className="flex items-center justify-between border-b border-line px-5 py-4"><h2 className="text-base font-semibold">Aktivitas administrasi terbaru</h2><Link href="/activity" className="text-sm font-medium text-brand hover:underline">Lihat semua</Link></div>
+          <div className="card overflow-hidden">
+            <PanelHeader icon={ShieldCheck} title="Aktivitas administrasi terbaru" href="/activity" />
             {(audits.data ?? []).length === 0 ? (
               <EmptyState title="Belum ada aktivitas" />
             ) : (

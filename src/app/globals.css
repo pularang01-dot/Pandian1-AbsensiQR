@@ -14,6 +14,15 @@
 
 @layer components {
   .tabular { font-variant-numeric: tabular-nums; }
+  .dash-hero {
+    background-image:
+      radial-gradient(110% 140% at 100% 0%, rgba(52,120,212,0.55) 0%, rgba(52,120,212,0) 58%),
+      linear-gradient(135deg, #142B4A 0%, #1b3a63 100%);
+  }
+  @keyframes ring-draw { from { stroke-dashoffset: var(--ring-circ); } to { stroke-dashoffset: var(--ring-offset); } }
+  @media (prefers-reduced-motion: no-preference) {
+    .ring-progress { animation: ring-draw 1.1s cubic-bezier(0.22, 1, 0.36, 1) both; }
+  }
   .card { @apply rounded-xl border border-line bg-surface shadow-card; }
   .field-label { @apply mb-1.5 block text-sm font-medium text-ink; }
   .field-input {
