@@ -21,7 +21,7 @@ const CAM_TEXT: Record<Exclude<CamIssue, null>, string> = {
   failed: "Kamera tidak dapat dimulai. Tutup aplikasi lain yang memakai kamera, lalu coba lagi.",
 };
 
-export function Scanner({ summary, isAdmin, dateLabel, scanAllowed }: { summary: Summary; isAdmin: boolean; dateLabel: string; scanAllowed: boolean }) {
+export function Scanner({ summary, isAdmin, dateLabel, scanAllowed, autoRecord = false }: { summary: Summary; isAdmin: boolean; dateLabel: string; scanAllowed: boolean; autoRecord?: boolean }) {
   const router = useRouter();
   const videoRef = useRef<HTMLVideoElement>(null);
   const controlsRef = useRef<{ stop: () => void } | null>(null);
@@ -70,6 +70,31 @@ export function Scanner({ summary, isAdmin, dateLabel, scanAllowed }: { summary:
 
   useEffect(() => () => { controlsRef.current?.stop(); }, []);
 
+  const recordQr = useCallback(async (token: string, student: RpcResult, direct = false) => {
+    if (!student.student_id) return;
+    if (!direct) setPhase("saving");
+    try {
+      const r = await recordAttendanceAction({ source: "qr", student_id: student.student_id, token });
+      if (r.result === "recorded") {
+        const label = r.status === "late" ? "Terlambat" : "Hadir";
+        setBanner({ tone: "success", text: `${r.full_name ?? student.full_name} tercatat ${label}.` });
+        addLog(true, `${r.full_name ?? student.full_name}: ${label}`);
+        navigator.vibrate?.(60);
+        router.refresh();
+      } else {
+        const text = r.message ?? RESULT_MESSAGE[r.result] ?? "Absensi tidak tercatat.";
+        setBanner({ tone: r.result === "duplicate" ? "warning" : "danger", text });
+        addLog(false, text);
+      }
+    } catch {
+      setBanner({ tone: "danger", text: "Gagal terhubung ke server. Absensi BELUM tersimpan. Pindai ulang setelah koneksi pulih." });
+      addLog(false, "Gagal menyimpan (koneksi)");
+    }
+    setPending(null);
+    setPhase("scanning");
+    setTimeout(() => { busyRef.current = false; }, 1200);
+  }, [addLog, router]);
+
   const handleToken = useCallback(async (token: string) => {
     const now = Date.now();
     if (busyRef.current) return;
@@ -79,6 +104,11 @@ export function Scanner({ summary, isAdmin, dateLabel, scanAllowed }: { summary:
     setBanner(null);
     try {
       const r = await lookupQrAction(token);
+      if (r.result === "ok" && autoRecord && r.student_id) {
+        // Mode cepat (diatur admin): tanpa konfirmasi visual, langsung dicatat.
+        await recordQr(token, r, true);
+        return;
+      }
       if (r.result === "ok") {
         setPending({ token, student: r });
         setPhase("confirm");
@@ -98,7 +128,7 @@ export function Scanner({ summary, isAdmin, dateLabel, scanAllowed }: { summary:
       addLog(false, "Gagal terhubung ke server");
     }
     setTimeout(() => { busyRef.current = false; }, 1200);
-  }, [addLog]);
+  }, [addLog, autoRecord, recordQr]);
 
   const handleRef = useRef(handleToken);
   useEffect(() => { handleRef.current = handleToken; }, [handleToken]);
@@ -133,29 +163,8 @@ export function Scanner({ summary, isAdmin, dateLabel, scanAllowed }: { summary:
     }
   }
 
-  async function confirmQr() {
-    if (!pending?.student.student_id) return;
-    setPhase("saving");
-    try {
-      const r = await recordAttendanceAction({ source: "qr", student_id: pending.student.student_id, token: pending.token });
-      if (r.result === "recorded") {
-        const label = r.status === "late" ? "Terlambat" : "Hadir";
-        setBanner({ tone: "success", text: `${r.full_name ?? pending.student.full_name} tercatat ${label}.` });
-        addLog(true, `${r.full_name ?? pending.student.full_name}: ${label}`);
-        navigator.vibrate?.(60);
-        router.refresh();
-      } else {
-        const text = r.message ?? RESULT_MESSAGE[r.result] ?? "Absensi tidak tercatat.";
-        setBanner({ tone: r.result === "duplicate" ? "warning" : "danger", text });
-        addLog(false, text);
-      }
-    } catch {
-      setBanner({ tone: "danger", text: "Gagal terhubung ke server. Absensi BELUM tersimpan. Pindai ulang setelah koneksi pulih." });
-      addLog(false, "Gagal menyimpan (koneksi)");
-    }
-    setPending(null);
-    setPhase("scanning");
-    setTimeout(() => { busyRef.current = false; }, 1200);
+  function confirmQr() {
+    if (pending) void recordQr(pending.token, pending.student);
   }
 
   function cancelQr() {

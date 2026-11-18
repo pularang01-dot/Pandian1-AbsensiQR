@@ -40,6 +40,7 @@ export async function saveAttendanceSettingsAction(_p: ActionState, fd: FormData
     "attendance.start_time": v.start_time, "attendance.late_after": v.late_after, "attendance.close_time": v.close_time,
     "attendance.school_days": [...new Set(v.school_days)].sort(), "permission.document_required_for_sick_days": v.doc_days,
     "attendance.go_live_date": v.go_live_date,
+    "attendance.qr_auto_record": fd.get("qr_auto_record") === "on",
   });
 }
 

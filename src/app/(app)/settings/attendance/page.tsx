@@ -34,6 +34,16 @@ export default async function AttendanceSettingsPage() {
               ))}
             </div>
           </fieldset>
+          <fieldset className="rounded-lg border border-line p-4">
+            <legend className="px-1 text-sm font-medium">Cara pencatatan QR</legend>
+            <label className="flex items-start gap-3 text-sm">
+              <input type="checkbox" name="qr_auto_record" defaultChecked={s["attendance.qr_auto_record"] === true} className="mt-0.5 h-5 w-5 rounded border-line accent-brand" />
+              <span>
+                <span className="font-medium">Langsung catat tanpa konfirmasi (mode cepat)</span>
+                <span className="mt-1 block text-ink-muted">Bila dicentang, kartu yang terbaca langsung tercatat Hadir atau Terlambat tanpa operator menekan konfirmasi. Antrean masuk lebih cepat, tetapi operator tidak lagi mencocokkan wajah dengan nama sebelum tercatat. Bila tidak dicentang (bawaan), operator mengonfirmasi tiap siswa. Kartu yang dipinjam atau difoto tidak akan tertangkap pada mode cepat, dan pulang lebih awal tetap tidak pernah ditentukan oleh pindai QR.</span>
+              </span>
+            </label>
+          </fieldset>
           <Field label="Tanggal mulai dipakai" htmlFor="go_live_date" hint="Pengingat rekonsiliasi di dashboard hanya berjalan sejak tanggal ini. Kosongkan selama aplikasi masih uji coba: pengingat tidak akan muncul. Isi dengan hari pertama aplikasi dipakai sungguhan."><Input id="go_live_date" name="go_live_date" type="date" defaultValue={str(s["attendance.go_live_date"], "")} /></Field>
           <Field label="Dokumen wajib bila sakit lebih dari (hari)" htmlFor="doc_days" required><Input id="doc_days" name="doc_days" type="number" min={1} max={30} defaultValue={num(s["permission.document_required_for_sick_days"], 3)} /></Field>
         </SimpleForm>
