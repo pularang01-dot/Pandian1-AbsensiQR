@@ -15,7 +15,7 @@ import { asDate, asUuid, loadClasses, loadYears, pickYear } from "@/lib/data/loo
 import { one } from "@/lib/data/students";
 import { STATUS_KEYS } from "@/lib/attendance-calc";
 import { sanitizeSearch } from "@/lib/validation/common";
-import { formatTanggal, formatWaktu, todayISO } from "@/lib/utils";
+import { cn, formatTanggal, formatWaktu, todayISO } from "@/lib/utils";
 import { CorrectButton, ReconcileButton } from "./correction-controls";
 
 export const metadata: Metadata = { title: "Data Absensi" };
@@ -58,13 +58,45 @@ export default async function AttendancePage({ searchParams }: { searchParams: P
   const { data, count, error } = await query;
   const rows = (data ?? []) as unknown as Row[];
 
+  // Jumlah per status pada tanggal (dan kelas) terpilih, untuk deretan penyaring cepat.
+  const statusCounts = await Promise.all(
+    STATUS_KEYS.map(async (k) => {
+      let cq = supabase
+        .from("attendance_records")
+        .select("id, attendance_sessions!inner(session_date)", { count: "exact", head: true })
+        .eq("attendance_sessions.session_date", date)
+        .eq("status", k);
+      if (classId) cq = cq.eq("class_id", classId);
+      const { count: n } = await cq;
+      return [k, n ?? 0] as const;
+    }),
+  );
+  const totalCount = statusCounts.reduce((a, [, n]) => a + n, 0);
+  const tabHref = (k: string) => {
+    const p = new URLSearchParams({ date });
+    if (classId) p.set("class", classId);
+    if (q) p.set("q", q);
+    if (k) p.set("status", k);
+    return `/attendance?${p.toString()}`;
+  };
+  const initials = (n: string) => n.trim().split(/\s+/).slice(0, 2).map((w) => w[0]).join("").toUpperCase();
+
   const columns: Column<Row>[] = [
-    { key: "name", header: "Siswa", cell: (r) => { const s = one(r.students); return s ? <Link href={`/students/${s.id}`} className="font-medium hover:text-brand">{s.full_name}</Link> : "-"; } },
+    { key: "name", header: "Siswa", cell: (r) => {
+      const s = one(r.students);
+      if (!s) return "-";
+      return (
+        <Link href={`/students/${s.id}`} className="group flex items-center gap-3">
+          <span aria-hidden className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-brand-light text-xs font-semibold text-brand">{initials(s.full_name)}</span>
+          <span className="font-medium group-hover:text-brand">{s.full_name}</span>
+        </Link>
+      );
+    } },
     { key: "nis", header: "NIS", hideOnMobile: true, cell: (r) => <span className="tabular">{one(r.students)?.nis ?? "-"}</span> },
     { key: "class", header: "Kelas", cell: (r) => one(r.classes)?.name ?? "-" },
     { key: "status", header: "Status", cell: (r) => <StatusBadge status={r.status} /> },
     { key: "time", header: "Waktu", hideOnMobile: true, cell: (r) => <span className="tabular">{r.checked_in_at ? formatWaktu(r.checked_in_at) : "-"}</span> },
-    { key: "source", header: "Sumber", hideOnMobile: true, cell: (r) => SOURCE_LABEL[r.source] ?? r.source },
+    { key: "source", header: "Sumber", hideOnMobile: true, cell: (r) => <span className="rounded-full bg-canvas px-2.5 py-0.5 text-xs text-ink-muted">{SOURCE_LABEL[r.source] ?? r.source}</span> },
     {
       key: "actions", header: "Tindakan", className: "text-right",
       cell: (r) => (
@@ -89,7 +121,26 @@ export default async function AttendancePage({ searchParams }: { searchParams: P
           </>
         }
       />
-      <div className="card">
+      <nav aria-label="Saring menurut status" className="-mx-1 mb-4 flex gap-2 overflow-x-auto px-1 pb-1">
+        {[["", "Semua", totalCount] as const, ...statusCounts.map(([k, n]) => [k, ATTENDANCE_STATUS[k].label, n] as const)].map(([k, label, n]) => {
+          const active = status === k;
+          return (
+            <Link
+              key={k || "all"}
+              href={tabHref(k)}
+              aria-current={active ? "true" : undefined}
+              className={cn(
+                "flex shrink-0 items-center gap-2 rounded-full border px-4 py-2 text-sm font-medium transition-colors",
+                active ? "border-navy bg-navy text-white shadow-card" : "border-line bg-surface text-ink hover:border-brand/40 hover:bg-brand-light/50",
+              )}
+            >
+              {label}
+              <span className={cn("tabular rounded-full px-2 py-0.5 text-xs font-semibold", active ? "bg-white/20 text-white" : "bg-canvas text-ink-muted")}>{n}</span>
+            </Link>
+          );
+        })}
+      </nav>
+      <div className="card overflow-hidden">
         <FilterBar action="/attendance" resetHref="/attendance">
           <FilterField label="Tanggal" htmlFor="date"><Input id="date" name="date" type="date" defaultValue={date} /></FilterField>
           <FilterField label="Kelas" htmlFor="class">
