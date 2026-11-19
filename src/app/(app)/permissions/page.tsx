@@ -50,6 +50,8 @@ export default async function PermissionsPage({ searchParams }: { searchParams: 
   const { data, count, error } = await query;
   const rows = (data ?? []) as unknown as Row[];
 
+  // Status "Sedang Ditinjau" dan "Perlu Klarifikasi" tidak lagi dipakai di alur; data lama tetap terhitung di "Semua".
+  const HIDDEN = ["under_review", "needs_clarification"];
   const keys = Object.keys(REQUEST_STATUS);
   const perStatus = await Promise.all(keys.map(async (k) => {
     const { count: n } = await supabase.from("permission_requests").select("id", { count: "exact", head: true }).eq("status", k);
@@ -57,7 +59,7 @@ export default async function PermissionsPage({ searchParams }: { searchParams: 
   }));
   const tabs = [
     { key: "", label: "Semua", count: perStatus.reduce((a, [, n]) => a + n, 0) },
-    ...perStatus.map(([k, n]) => ({ key: k, label: REQUEST_STATUS[k as keyof typeof REQUEST_STATUS].label, count: n, attention: k === "pending" })),
+    ...perStatus.filter(([k]) => !HIDDEN.includes(k)).map(([k, n]) => ({ key: k, label: REQUEST_STATUS[k as keyof typeof REQUEST_STATUS].label, count: n, attention: k === "pending" })),
   ];
 
   const columns: Column<Row>[] = [
@@ -85,7 +87,7 @@ export default async function PermissionsPage({ searchParams }: { searchParams: 
           <FilterField label="Status" htmlFor="status">
             <Select id="status" name="status" defaultValue={status || "all"}>
               <option value="all">Semua status</option>
-              {Object.entries(REQUEST_STATUS).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
+              {Object.entries(REQUEST_STATUS).filter(([k]) => !HIDDEN.includes(k)).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
             </Select>
           </FilterField>
           <FilterField label="Cari nama siswa" htmlFor="q" grow><Input id="q" name="q" defaultValue={q} placeholder="Ketik nama siswa" /></FilterField>

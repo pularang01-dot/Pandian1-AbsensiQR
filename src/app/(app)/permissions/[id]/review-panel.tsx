@@ -3,7 +3,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { Check, MessageSquareWarning, Search, Undo2, X } from "lucide-react";
+import { Check, Undo2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Modal } from "@/components/ui/modal";
 import { Field, Textarea } from "@/components/ui/field";
@@ -54,9 +54,7 @@ export function ReviewPanel({ requestId, status, retrospective, canCancelApprova
     <>
       {retrospective && open && <p className="mb-3 rounded-lg border border-warning/30 bg-warning/10 px-3.5 py-3 text-sm text-[#8a5a0e]">Pengajuan ini diajukan setelah tanggal ketidakhadiran. Periksa dokumen dan wajib isi catatan peninjauan sebelum menyetujui.</p>}
       <div className="flex flex-wrap gap-2">
-        {status === "pending" && <Button variant="outline" onClick={() => setAction("start_review")}><Search className="h-4 w-4" aria-hidden />Mulai tinjau</Button>}
         {open && <Button onClick={() => setAction("approve")}><Check className="h-4 w-4" aria-hidden />Setujui</Button>}
-        {open && <Button variant="outline" onClick={() => setAction("request_clarification")}><MessageSquareWarning className="h-4 w-4" aria-hidden />Minta klarifikasi</Button>}
         {open && <Button variant="danger" onClick={() => setAction("reject")}><X className="h-4 w-4" aria-hidden />Tolak</Button>}
         {status === "approved" && canCancelApproval && <Button variant="danger" onClick={() => setAction("cancel_approval")}><Undo2 className="h-4 w-4" aria-hidden />Batalkan persetujuan</Button>}
       </div>
