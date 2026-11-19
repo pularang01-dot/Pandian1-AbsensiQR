@@ -78,8 +78,15 @@ export default async function QrCardsPage({ searchParams }: { searchParams: Prom
         <div className="card no-print"><EmptyState title="Tidak ada siswa aktif di kelas ini" /></div>
       ) : (
         gaya === "kartu" ? (
-          <div className="grid justify-center gap-4 sm:grid-cols-[repeat(auto-fill,85.6mm)] print:grid-cols-[repeat(2,85.6mm)] print:justify-center print:gap-x-[6mm] print:gap-y-[2.5mm]">
-            {cards.map((c) => <AttendanceCard key={c.id} token={c.token} name={c.name} nis={c.nis} nisn={c.nisn} className={c.className} schoolName={schoolName} />)}
+          <div>
+            {Array.from({ length: Math.ceil(cards.length / 10) }, (_, p) => cards.slice(p * 10, p * 10 + 10)).map((chunk, p, all) => (
+              <div key={p} className="mb-6 print:mb-0 print:box-border print:h-[296mm] print:overflow-hidden print:p-[7mm] print:break-after-page print:last:break-after-auto">
+                {all.length > 1 && <p className="no-print mb-2 text-xs font-medium text-ink-muted">Lembar {p + 1} dari {all.length}</p>}
+                <div className="grid justify-center gap-4 sm:grid-cols-[repeat(auto-fill,85.6mm)] print:grid-cols-[repeat(2,85.6mm)] print:justify-center print:gap-x-[6mm] print:gap-y-[2.5mm]">
+                  {chunk.map((c) => <AttendanceCard key={c.id} token={c.token} name={c.name} nis={c.nis} nisn={c.nisn} className={c.className} schoolName={schoolName} />)}
+                </div>
+              </div>
+            ))}
           </div>
         ) : (
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 print:grid-cols-3 print:gap-2">
