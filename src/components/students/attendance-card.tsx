@@ -1,8 +1,26 @@
 "use client";
 
+import { useEffect, useState } from "react";
+import QRCode from "qrcode";
 import { GraduationCap, IdCard, School, User } from "lucide-react";
-import { useQrDataUrl } from "./qr-card";
 import { CARD_TAGLINE, CARD_TITLE } from "@/lib/brand/card";
+
+/** QR sebagai gambar vektor (SVG): tetap tajam pada ukuran cetak berapa pun, tanpa piksel yang kabur. */
+function useQrSvgUrl(token: string | null) {
+  const [url, setUrl] = useState<string | null>(null);
+  const [failed, setFailed] = useState(false);
+  useEffect(() => {
+    let alive = true;
+    setUrl(null);
+    setFailed(false);
+    if (!token) return;
+    QRCode.toString(token, { type: "svg", errorCorrectionLevel: "M", margin: 1 })
+      .then((svg) => alive && setUrl(`data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`))
+      .catch(() => alive && setFailed(true));
+    return () => { alive = false; };
+  }, [token]);
+  return { url, failed };
+}
 
 /**
  * Kartu Kehadiran gaya desain sekolah, ukuran kartu ID standar (85,6 x 54 mm).
@@ -14,7 +32,7 @@ export function AttendanceCard({
 }: {
   token: string | null; name: string; nis: string; nisn?: string | null; className?: string | null; schoolName: string;
 }) {
-  const { url, failed } = useQrDataUrl(token, 360);
+  const { url, failed } = useQrSvgUrl(token);
   // Hanya pada kartu: angka 1 pada nama sekolah ditampilkan sebagai angka romawi I.
   const schoolName = rawSchoolName.replace(/(Pandian)\s+1\b/i, "$1 I");
   // Ukuran huruf mengikuti lebar teks (huruf kapital lebih lebar), supaya nama sekolah tidak terpotong.
