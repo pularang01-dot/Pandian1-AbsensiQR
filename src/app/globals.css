@@ -26,6 +26,16 @@
     .scan-line { animation: scan-sweep 2.4s ease-in-out infinite; }
     .scan-pulse { animation: scan-glow 1.4s ease-in-out infinite; }
   }
+  .auth-hero {
+    background-image:
+      radial-gradient(70% 60% at 85% 0%, rgba(52,120,212,0.55) 0%, rgba(52,120,212,0) 60%),
+      radial-gradient(60% 50% at 0% 100%, rgba(245,184,46,0.12) 0%, rgba(245,184,46,0) 60%),
+      linear-gradient(160deg, #162f52 0%, #142B4A 55%, #0d1f38 100%);
+  }
+  @keyframes auth-rise { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: translateY(0); } }
+  @media (prefers-reduced-motion: no-preference) {
+    .auth-rise { animation: auth-rise 0.7s cubic-bezier(0.22, 1, 0.36, 1) both; animation-delay: var(--d, 0ms); }
+  }
   .splash { background-image: radial-gradient(80% 70% at 50% 35%, #25508a 0%, #142B4A 65%, #0d1f38 100%); }
   .splash-caret { animation: splash-blink 0.9s steps(1) infinite; }
   @keyframes splash-blink { 50% { opacity: 0; } }
