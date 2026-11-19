@@ -4,6 +4,7 @@ import { Toaster } from "sonner";
 import "./globals.css";
 import { SwRegister } from "@/components/pwa/sw-register";
 import { InstallBanner } from "@/components/pwa/install-banner";
+import { SplashScreen } from "@/components/brand/splash-screen";
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-inter", display: "swap" });
 
@@ -26,6 +27,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="id" className={inter.variable}>
       <body>
+        <SplashScreen />
         {children}
         <SwRegister />
         <InstallBanner />
