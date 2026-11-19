@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { AlertTriangle, Camera, CameraOff, CheckCircle2, ClipboardList, History, Search, ShieldCheck, UserSearch, WifiOff, XCircle, Zap } from "lucide-react";
+import { AlertTriangle, Camera, CameraOff, CheckCircle2, ClipboardList, FlipHorizontal, History, Search, ShieldCheck, UserSearch, WifiOff, XCircle, Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Field, Input, Select, Textarea } from "@/components/ui/field";
 import { lookupQrAction, recordAttendanceAction, searchStudentsAction, type StudentHit } from "@/app/(app)/attendance/actions";
@@ -23,6 +23,8 @@ const CAM_TEXT: Record<Exclude<CamIssue, null>, string> = {
 
 export function Scanner({ summary, isAdmin, dateLabel, scanAllowed, autoRecord = false }: { summary: Summary; isAdmin: boolean; dateLabel: string; scanAllowed: boolean; autoRecord?: boolean }) {
   const router = useRouter();
+  // Kamera depan atau webcam laptop ditampilkan seperti cermin, supaya gerakan di layar searah dengan gerakan tangan.
+  const [mirror, setMirror] = useState(true);
   const videoRef = useRef<HTMLVideoElement>(null);
   const controlsRef = useRef<{ stop: () => void } | null>(null);
   const busyRef = useRef(false);
@@ -148,6 +150,7 @@ export function Scanner({ summary, isAdmin, dateLabel, scanAllowed, autoRecord =
       const back = devices.find((d) => /back|rear|belakang|environment/i.test(d.label));
       const use = chosen || deviceId || back?.deviceId || devices[devices.length - 1].deviceId;
       setDeviceId(use);
+      setMirror(!/back|rear|belakang|environment/i.test(devices.find((d) => d.deviceId === use)?.label ?? ""));
       const reader = new BrowserQRCodeReader(undefined, { delayBetweenScanAttempts: 150 });
       controlsRef.current = await reader.decodeFromVideoDevice(use, videoRef.current, (result) => {
         if (result) void handleRef.current(result.getText());
@@ -229,7 +232,7 @@ export function Scanner({ summary, isAdmin, dateLabel, scanAllowed, autoRecord =
 
         <section className="card overflow-hidden">
           <div className="scanner-stage relative overflow-hidden aspect-[3/4] w-full bg-navy sm:aspect-video">
-            <video ref={videoRef} className={cn("h-full w-full object-cover", !scanning && "hidden")} playsInline muted aria-label="Pratinjau kamera pemindai" />
+            <video ref={videoRef} className={cn("h-full w-full object-cover", !scanning && "hidden", mirror && "[transform:scaleX(-1)]")} playsInline muted aria-label="Pratinjau kamera pemindai" />
             <div className="absolute left-3 top-3 flex flex-wrap gap-2 text-xs font-medium">
               <span className={cn("inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 backdrop-blur", phase === "scanning" ? "bg-success/90 text-white" : "bg-black/45 text-white")}>
                 <span aria-hidden className={cn("h-2 w-2 rounded-full", phase === "scanning" ? "scan-pulse bg-white" : "bg-white/60")} />
@@ -264,7 +267,10 @@ export function Scanner({ summary, isAdmin, dateLabel, scanAllowed, autoRecord =
             {!scanning ? (
               <Button size="lg" onClick={() => startScanner()} loading={phase === "starting"} disabled={!online}><Camera className="h-5 w-5" aria-hidden />Mulai pemindai</Button>
             ) : (
-              <Button size="lg" variant="outline" onClick={stopScanner}>Hentikan pemindai</Button>
+              <>
+                <Button size="lg" variant="outline" onClick={stopScanner}>Hentikan pemindai</Button>
+                <Button size="lg" variant="ghost" onClick={() => setMirror((m) => !m)} aria-pressed={mirror}><FlipHorizontal className="h-5 w-5" aria-hidden />Balik tampilan</Button>
+              </>
             )}
             {cameras.length > 1 && (
               <div className="flex-1">
