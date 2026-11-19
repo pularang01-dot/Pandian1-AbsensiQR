@@ -151,10 +151,27 @@ export function Scanner({ summary, isAdmin, dateLabel, scanAllowed, autoRecord =
       const use = chosen || deviceId || back?.deviceId || devices[devices.length - 1].deviceId;
       setDeviceId(use);
       setMirror(!/back|rear|belakang|environment/i.test(devices.find((d) => d.deviceId === use)?.label ?? ""));
-      const reader = new BrowserQRCodeReader(undefined, { delayBetweenScanAttempts: 150 });
-      controlsRef.current = await reader.decodeFromVideoDevice(use, videoRef.current, (result) => {
+      // Percobaan baca lebih rapat (50 ms) dan gambar beresolusi tinggi supaya QR kecil atau jauh tetap terbaca.
+      const reader = new BrowserQRCodeReader(undefined, { delayBetweenScanAttempts: 50 });
+      const onResult = (result: { getText: () => string } | undefined) => {
         if (result) void handleRef.current(result.getText());
-      });
+      };
+      try {
+        controlsRef.current = await reader.decodeFromConstraints(
+          { audio: false, video: { deviceId: { exact: use }, width: { ideal: 1920 }, height: { ideal: 1080 }, frameRate: { ideal: 30 } } },
+          videoRef.current,
+          onResult,
+        );
+      } catch (err) {
+        // Kamera yang tidak mendukung resolusi tinggi: pakai pengaturan bawaan.
+        if (err instanceof Error && (err.name === "NotAllowedError" || err.name === "SecurityError")) throw err;
+        controlsRef.current = await reader.decodeFromVideoDevice(use, videoRef.current, onResult);
+      }
+      // Fokus otomatis berkelanjutan bila didukung perangkat (diabaikan bila tidak).
+      try {
+        const track = (videoRef.current.srcObject as MediaStream | null)?.getVideoTracks()[0];
+        await track?.applyConstraints({ advanced: [{ focusMode: "continuous" } as unknown as MediaTrackConstraintSet] });
+      } catch { /* tidak didukung */ }
       busyRef.current = false;
       setPhase("scanning");
     } catch (err) {
