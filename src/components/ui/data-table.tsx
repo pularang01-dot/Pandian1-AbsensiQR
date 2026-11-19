@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { EmptyState } from "./states";
 
@@ -20,6 +21,7 @@ export function DataTable<T>({
   emptyDescription,
   emptyAction,
   caption,
+  rowHref,
 }: {
   columns: Column<T>[];
   rows: T[];
@@ -28,6 +30,8 @@ export function DataTable<T>({
   emptyDescription?: string;
   emptyAction?: ReactNode;
   caption?: string;
+  /** Bila diisi, seluruh baris dapat diketuk dan membuka alamat ini. Kolom pertama menjadi tautan. */
+  rowHref?: (row: T) => string;
 }) {
   if (rows.length === 0) {
     return <EmptyState title={emptyTitle} description={emptyDescription} action={emptyAction} />;
@@ -51,10 +55,12 @@ export function DataTable<T>({
         </thead>
         <tbody className="divide-y divide-line">
           {rows.map((row) => (
-            <tr key={rowKey(row)} className="hover:bg-canvas/50">
-              {columns.map((c) => (
+            <tr key={rowKey(row)} className={cn("hover:bg-canvas/50", rowHref && "relative cursor-pointer hover:bg-brand-light/50 focus-within:bg-brand-light/50")}>
+              {columns.map((c, i) => (
                 <td key={c.key} className={cn("px-4 py-3 align-middle text-ink", c.hideOnMobile && "hidden md:table-cell", c.className)}>
-                  {c.cell(row)}
+                  {rowHref && i === 0 ? (
+                    <Link href={rowHref(row)} className="font-medium after:absolute after:inset-0 after:content-[''] hover:text-brand focus-visible:outline-none">{c.cell(row)}</Link>
+                  ) : c.cell(row)}
                 </td>
               ))}
             </tr>

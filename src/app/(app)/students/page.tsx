@@ -56,7 +56,7 @@ export default async function StudentsPage({ searchParams }: { searchParams: Pro
   const rows = (data ?? []) as unknown as Row[];
 
   const columns: Column<Row>[] = [
-    { key: "name", header: "Nama", cell: (r) => <Link href={`/students/${r.id}`} className="font-medium text-ink hover:text-brand">{r.full_name}</Link> },
+    { key: "name", header: "Nama", cell: (r) => r.full_name },
     { key: "nis", header: "NIS", cell: (r) => <span className="tabular">{r.nis}</span> },
     { key: "nisn", header: "NISN", hideOnMobile: true, cell: (r) => <span className="tabular">{r.nisn ?? "-"}</span> },
     { key: "class", header: "Kelas", cell: (r) => openClassName(r.student_class_assignments) ?? <span className="text-ink-muted">Belum ditempatkan</span> },
@@ -107,6 +107,7 @@ export default async function StudentsPage({ searchParams }: { searchParams: Pro
               columns={columns}
               rows={rows}
               rowKey={(r) => r.id}
+              rowHref={(r) => `/students/${r.id}`}
               emptyTitle={q || classId ? "Tidak ada siswa yang cocok" : "Belum ada siswa"}
               emptyDescription={q || classId ? "Ubah kata kunci atau filter pencarian." : isAdmin ? "Tambahkan siswa satu per satu atau impor dari Excel/CSV." : "Data siswa akan muncul setelah administrator menambahkannya."}
             />

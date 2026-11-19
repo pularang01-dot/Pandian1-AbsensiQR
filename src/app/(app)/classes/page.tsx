@@ -38,7 +38,7 @@ export default async function ClassesPage({ searchParams }: { searchParams: Prom
 
   type Row = (typeof classes)[number];
   const columns: Column<Row>[] = [
-    { key: "name", header: "Kelas", cell: (c) => <Link href={`/classes/${c.id}`} className="font-medium hover:text-brand">{c.name}</Link> },
+    { key: "name", header: "Kelas", cell: (c) => c.name },
     { key: "teacher", header: "Wali kelas", cell: (c) => {
       if (!c.homeroom_teacher_id) return <span className="text-ink-muted">Belum ditentukan</span>;
       const p = profiles.get(c.homeroom_teacher_id);
@@ -73,7 +73,7 @@ export default async function ClassesPage({ searchParams }: { searchParams: Prom
         {!year ? (
           <EmptyState title="Belum ada tahun ajaran" description={isAdmin ? "Buat tahun ajaran terlebih dahulu di Pengaturan > Tahun Ajaran." : "Hubungi administrator sekolah."} action={isAdmin ? <Link href="/settings/academic-year" className="inline-flex h-11 items-center rounded-lg bg-brand px-4 text-sm font-medium text-white">Buka pengaturan</Link> : undefined} />
         ) : (
-          <DataTable caption="Daftar kelas" columns={columns} rows={classes} rowKey={(c) => c.id} emptyTitle="Belum ada kelas" emptyDescription={isAdmin ? "Gunakan tombol Tambah kelas untuk membuat kelas pertama." : undefined} />
+          <DataTable caption="Daftar kelas" columns={columns} rows={classes} rowKey={(c) => c.id} rowHref={(c) => `/classes/${c.id}`} emptyTitle="Belum ada kelas" emptyDescription={isAdmin ? "Gunakan tombol Tambah kelas untuk membuat kelas pertama." : undefined} />
         )}
       </div>
     </>
