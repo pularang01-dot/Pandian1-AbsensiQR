@@ -1,9 +1,10 @@
 import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
-import { Toaster } from "sonner";
 import "./globals.css";
 import { SwRegister } from "@/components/pwa/sw-register";
 import { InstallBanner } from "@/components/pwa/install-banner";
+import { ThemeScript } from "@/components/theme/theme-script";
+import { ThemedToaster } from "@/components/theme/themed-toaster";
 import { SplashScreen } from "@/components/brand/splash-screen";
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-inter", display: "swap" });
@@ -25,13 +26,14 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="id" className={inter.variable}>
+    <html lang="id" className={inter.variable} suppressHydrationWarning>
+      <head><ThemeScript /></head>
       <body>
         <SplashScreen />
         {children}
         <SwRegister />
         <InstallBanner />
-        <Toaster position="top-right" richColors closeButton />
+        <ThemedToaster />
       </body>
     </html>
   );

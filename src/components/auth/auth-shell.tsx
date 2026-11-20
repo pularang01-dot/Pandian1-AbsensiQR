@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { QrCode, ScrollText, ShieldCheck } from "lucide-react";
+import { ThemeToggle } from "@/components/theme/theme-toggle";
 import { SchoolLogo } from "@/components/brand/school-logo";
 import { CopyrightFooter } from "@/components/layout/copyright-footer";
 
@@ -59,7 +60,8 @@ export function AuthShell({ title, description, children }: { title: string; des
       </section>
 
       {/* Panel kanan: formulir */}
-      <section className="flex flex-col bg-canvas lg:bg-surface">
+      <section className="relative flex flex-col bg-canvas lg:bg-surface">
+        <ThemeToggle className="absolute right-4 top-4 z-10 bg-surface/90 backdrop-blur lg:bg-canvas" />
         {/* Spanduk untuk ponsel dan tablet */}
         <div className="auth-hero relative overflow-hidden px-5 pb-20 pt-10 text-center text-white lg:hidden">
           <span aria-hidden className="auth-wave pointer-events-none absolute left-1/2 top-[40%] h-72 w-72 -translate-x-1/2 -translate-y-1/2 rounded-full border border-white/10" />

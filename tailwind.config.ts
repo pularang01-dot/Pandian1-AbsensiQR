@@ -1,16 +1,17 @@
 import type { Config } from "tailwindcss";
 
 const config: Config = {
+  darkMode: "class",
   content: ["./src/**/*.{ts,tsx}"],
   theme: {
     extend: {
       colors: {
         navy: { DEFAULT: "#142B4A", secondary: "#203E63" },
-        brand: { DEFAULT: "#3478D4", light: "#EAF2FC" },
-        surface: "#FFFFFF",
-        canvas: "#F5F7FA",
-        ink: { DEFAULT: "#182230", muted: "#64748B" },
-        line: "#E5EAF0",
+        brand: { DEFAULT: "#3478D4", light: "rgb(var(--c-brand-light) / <alpha-value>)" },
+        surface: "rgb(var(--c-surface) / <alpha-value>)",
+        canvas: "rgb(var(--c-canvas) / <alpha-value>)",
+        ink: { DEFAULT: "rgb(var(--c-ink) / <alpha-value>)", muted: "rgb(var(--c-ink-muted) / <alpha-value>)" },
+        line: "rgb(var(--c-line) / <alpha-value>)",
         success: "#16865B",
         warning: "#D99124",
         danger: "#D64B4B",

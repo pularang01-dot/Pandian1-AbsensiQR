@@ -3,6 +3,19 @@
 @tailwind utilities;
 
 @layer base {
+  :root {
+    --c-surface: 255 255 255; --c-canvas: 245 247 250; --c-ink: 24 34 48; --c-ink-muted: 100 116 139;
+    --c-line: 229 234 240; --c-brand-light: 234 242 252;
+  }
+  .dark {
+    --c-surface: 17 29 49; --c-canvas: 9 16 29; --c-ink: 230 237 247; --c-ink-muted: 154 169 191;
+    --c-line: 38 53 77; --c-brand-light: 22 42 74;
+    color-scheme: dark;
+  }
+  .dark .text-\[\#9a6510\], .dark .text-\[\#8a5a0e\] { color: #f2c05c; }
+  .dark .text-brand { color: #6aa5ee; }
+  .dark .shadow-card, .dark .shadow-pop { --tw-shadow-color: rgba(0,0,0,0.5); }
+  .dark .card { box-shadow: 0 1px 2px rgba(0,0,0,0.4); }
   html { -webkit-text-size-adjust: 100%; }
   body {
     @apply bg-canvas font-sans text-ink antialiased;
@@ -67,6 +80,7 @@
 
 @media print {
   @page { size: A4; margin: 0; }
+  .dark { --c-surface: 255 255 255; --c-canvas: 245 247 250; --c-ink: 24 34 48; --c-ink-muted: 100 116 139; --c-line: 229 234 240; --c-brand-light: 234 242 252; color-scheme: light; }
   .attendance-card, .attendance-card * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
   aside, header.app-topbar, .no-print { display: none !important; }
   body { background: #fff; }

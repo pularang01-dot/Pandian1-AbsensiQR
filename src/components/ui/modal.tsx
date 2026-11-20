@@ -45,7 +45,7 @@ export function Modal({
   if (!open) return null;
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center sm:items-center sm:p-4" role="presentation">
-      <button aria-label="Tutup" className="absolute inset-0 bg-ink/50" onClick={onClose} tabIndex={-1} />
+      <button aria-label="Tutup" className="absolute inset-0 bg-black/50" onClick={onClose} tabIndex={-1} />
       <div
         ref={ref}
         role="dialog"

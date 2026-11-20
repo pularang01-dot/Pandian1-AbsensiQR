@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import { CopyrightFooter } from "./copyright-footer";
 import { Bell, LogOut, Menu, X } from "lucide-react";
 import { SchoolLogo } from "@/components/brand/school-logo";
+import { ThemeToggle } from "@/components/theme/theme-toggle";
 import { InstallApp } from "@/components/pwa/install-app";
 import { cn } from "@/lib/utils";
 import { navForRole, isActive } from "@/lib/navigation";
@@ -82,7 +83,7 @@ export function AppShell({
 
       {open && (
         <div className="fixed inset-0 z-40 lg:hidden" role="dialog" aria-modal="true" aria-label="Menu navigasi">
-          <button aria-label="Tutup menu" className="absolute inset-0 bg-ink/50" onClick={() => setOpen(false)} />
+          <button aria-label="Tutup menu" className="absolute inset-0 bg-black/50" onClick={() => setOpen(false)} />
           <aside className="absolute inset-y-0 left-0 flex w-72 max-w-[85vw] flex-col bg-navy shadow-pop">
             <button
               aria-label="Tutup menu"
@@ -118,6 +119,7 @@ export function AppShell({
               </span>
             )}
           </Link>
+          <ThemeToggle />
           <InstallApp />
           <div className="hidden text-right sm:block">
             <p className="text-sm font-medium leading-tight text-ink">{fullName}</p>
