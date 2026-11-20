@@ -6,7 +6,8 @@ import {
 import { STAFF_ROLES, APPROVER_ROLES } from "@/lib/auth/roles";
 import { requireRole } from "@/lib/auth/session";
 import { createClient } from "@/lib/supabase/server";
-import { ChartPanel, DashboardHero, Initials, KpiTile, MiniStat, PanelHeader, type HeroAction } from "@/components/dashboard/dashboard-ui";
+import { ChartPanel, Initials, KpiTile, MiniStat, PanelHeader } from "@/components/dashboard/dashboard-ui";
+import { DayHeader, RollBoard, type BoardRow, type Tally } from "@/components/dashboard/roll-board";
 import { StatusBadge, ATTENDANCE_STATUS } from "@/components/ui/status-badge";
 import { EmptyState, ErrorState } from "@/components/ui/states";
 import { Input, Select } from "@/components/ui/field";
@@ -109,18 +110,13 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
   ]);
 
   const c = data.counts;
+  const tallyOf = (counts: typeof c, total: number): Tally => {
+    const known = STATUS_KEYS.reduce((n, k) => n + counts[k], 0);
+    return { ...counts, unrecorded: Math.max(0, total - known) };
+  };
+  const dayTally = tallyOf(c, data.totalStudents);
   const donut = STATUS_KEYS.map((k) => ({ key: k, label: ATTENDANCE_STATUS[k].label, value: c[k] }));
   const hasAnyRecord = Object.values(c).some((n) => n > 0);
-
-  const hour = Number(new Date().toLocaleString("en-GB", { timeZone: "Asia/Jakarta", hour: "numeric", hour12: false })) % 24;
-  const greeting = hour < 11 ? "Selamat pagi" : hour < 15 ? "Selamat siang" : hour < 18 ? "Selamat sore" : "Selamat malam";
-  const canTakeAttendance = user.roles.some((r) => ["super_admin", "school_admin", "teacher", "operator"].includes(r));
-  const heroActions: HeroAction[] = [
-    ...(canTakeAttendance ? [{ href: "/attendance/class", label: "Absen kelas", icon: ClipboardCheck }, { href: "/attendance/scanner", label: "Pemindai QR", icon: ScanLine }] : []),
-    { href: "/attendance", label: "Data absensi", icon: Activity },
-    { href: "/permissions", label: "Izin dan sakit", icon: FileText },
-  ];
-
   const barData = data.byClass.map((r) => ({
     name: r.name,
     hadir: r.counts.present,
@@ -128,18 +124,36 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
     tidak_hadir: Math.max(0, r.total - r.counts.present - r.counts.late),
   }));
 
+  const hour = Number(new Date().toLocaleString("en-GB", { timeZone: "Asia/Jakarta", hour: "numeric", hour12: false })) % 24;
+  const greeting = hour < 11 ? "Selamat pagi" : hour < 15 ? "Selamat siang" : hour < 18 ? "Selamat sore" : "Selamat malam";
+  const canTakeAttendance = user.roles.some((r) => ["super_admin", "school_admin", "teacher", "operator"].includes(r));
+  const heroActions: { href: string; label: string; icon: typeof Activity }[] = [
+    ...(canTakeAttendance ? [{ href: "/attendance/class", label: "Absen kelas", icon: ClipboardCheck }, { href: "/attendance/scanner", label: "Pemindai QR", icon: ScanLine }] : []),
+    { href: "/attendance", label: "Data absensi", icon: Activity },
+    { href: "/permissions", label: "Izin dan sakit", icon: FileText },
+  ];
+
+  const boardRows: BoardRow[] = data.byClass.map((r) => ({
+    id: r.id, name: r.name, total: r.total, tally: tallyOf(r.counts, r.total), rateText: formatRate(r.rate),
+    href: `/attendance?date=${date}${r.id ? `&class=${r.id}` : ""}`,
+  }));
+
   return (
     <>
-      <DashboardHero
+      <DayHeader
+        weekday={formatTanggal(date, "EEEE")}
+        day={formatTanggal(date, "d")}
+        monthYear={formatTanggal(date, "MMMM yyyy")}
         greeting={greeting}
         name={user.fullName}
-        dateLabel={formatTanggal(date)}
         yearName={year?.name}
         isToday={date === todayISO()}
-        rate={data.rate}
-        present={c.present}
-        late={c.late}
+        hasSession={data.hasSession}
+        seen={c.present + c.late}
         unrecorded={data.unrecorded}
+        rateValue={data.rate === null ? null : data.rate.toLocaleString("id-ID", { minimumFractionDigits: 1, maximumFractionDigits: 1 })}
+        tally={dayTally}
+        total={data.totalStudents}
         actions={heroActions}
       />
 
@@ -246,11 +260,11 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
             </div>
           </section>
 
-          {!data.hasSession && (
-            <p role="status" className="mb-6 rounded-lg border border-info/20 bg-info/10 px-4 py-3 text-sm text-info">
-              Belum ada sesi absensi pada tanggal ini. Siswa tanpa catatan tidak otomatis dianggap alpa sebelum rekonsiliasi dilakukan.
-            </p>
-          )}
+          <section className="card mb-6 p-5">
+            <h2 className="text-base font-semibold">Papan apel per kelas</h2>
+            <p className="mb-4 mt-0.5 text-sm text-ink-muted">Satu tanda mewakili satu siswa. Ketuk kelas untuk melihat daftar absensinya.</p>
+            {boardRows.length > 0 ? <RollBoard rows={boardRows} /> : <EmptyState title="Belum ada kelas" description="Buat kelas dan tempatkan siswa agar papan apel tersedia." />}
+          </section>
 
           <section className="mb-6 grid gap-6 lg:grid-cols-2">
             <ChartPanel title="Distribusi kehadiran" subtitle="Catatan pada tanggal terpilih">

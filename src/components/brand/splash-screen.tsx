@@ -58,6 +58,7 @@ export function SplashScreen() {
     <>
       <div
         id="splash"
+        suppressHydrationWarning
         role="status"
         aria-label="Memuat Pandian Smart Attendance"
         onClick={skip}
