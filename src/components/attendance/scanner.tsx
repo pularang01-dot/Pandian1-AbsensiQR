@@ -234,9 +234,17 @@ export function Scanner({ summary, isAdmin, dateLabel, scanAllowed, autoRecord =
   const recorded = Math.max(0, summary.total - summary.unrecorded);
   const recordedPct = summary.total > 0 ? Math.round((recorded / summary.total) * 100) : 0;
 
+  const bannerEl = banner ? (
+    <div role="status" aria-live="polite" className={cn("flex items-start gap-3 rounded-xl border px-4 py-3.5 text-base font-semibold shadow-card", bannerStyle[banner.tone])}>
+      <BannerIcon className="mt-0.5 h-6 w-6 shrink-0" aria-hidden />
+      <p>{banner.text}</p>
+    </div>
+  ) : null;
+  const bannerInStage = scanning && !pending;
+
   return (
-    <div className="grid gap-6 lg:grid-cols-5">
-      <div className="space-y-4 lg:col-span-3">
+    <div className="grid gap-6 xl:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
+      <div className="min-w-0 space-y-4">
         {!online && (
           <div role="alert" className="flex items-start gap-3 rounded-lg border border-danger/20 bg-danger/10 px-4 py-3 text-sm text-danger">
             <WifiOff className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
@@ -248,7 +256,7 @@ export function Scanner({ summary, isAdmin, dateLabel, scanAllowed, autoRecord =
         )}
 
         <section className="card overflow-hidden">
-          <div className="scanner-stage relative overflow-hidden aspect-[3/4] w-full bg-navy sm:aspect-video">
+          <div className="scanner-stage relative h-[calc(100svh-15rem)] min-h-[20rem] w-full overflow-hidden bg-navy xl:max-h-[52rem]">
             <video ref={videoRef} className={cn("h-full w-full object-cover", !scanning && "hidden", mirror && "[transform:scaleX(-1)]")} playsInline muted aria-label="Pratinjau kamera pemindai" />
             <div className="absolute left-3 top-3 flex flex-wrap gap-2 text-xs font-medium">
               <span className={cn("inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 backdrop-blur", phase === "scanning" ? "bg-success/90 text-white" : "bg-black/45 text-white")}>
@@ -271,6 +279,31 @@ export function Scanner({ summary, isAdmin, dateLabel, scanAllowed, autoRecord =
                 </div>
               </div>
             )}
+            {pending && (
+              <div className="absolute inset-x-0 bottom-0 z-10 p-3 sm:p-4" aria-live="polite">
+                <div className="rounded-2xl bg-surface p-4 shadow-pop ring-2 ring-brand/40">
+                  <p className="mb-2 flex items-center gap-1.5 text-xs font-medium text-brand"><ShieldCheck className="h-3.5 w-3.5" aria-hidden />Konfirmasi identitas siswa</p>
+                  <div className="flex items-center gap-3">
+                    <span aria-hidden className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-navy text-base font-semibold text-white">
+                      {(pending.student.full_name ?? "?").trim().split(/\s+/).slice(0, 2).map((w) => w[0]).join("").toUpperCase()}
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-xl font-semibold leading-tight tracking-tight">{pending.student.full_name}</p>
+                      <p className="mt-1 flex flex-wrap gap-1.5 text-xs">
+                        <span className="tabular rounded-full bg-canvas px-2.5 py-0.5 text-ink-muted">NIS {pending.student.nis}</span>
+                        {pending.student.class_name && <span className="rounded-full bg-canvas px-2.5 py-0.5 text-ink-muted">Kelas {pending.student.class_name}</span>}
+                      </p>
+                    </div>
+                  </div>
+                  <p className="mt-2 text-xs text-ink-muted">Pastikan siswa di depan Anda adalah siswa ini. QR saja bukan bukti kehadiran.</p>
+                  <div className="mt-3 grid grid-cols-2 gap-2">
+                    <Button variant="outline" size="lg" onClick={cancelQr} disabled={phase === "saving"}>Bukan siswa ini</Button>
+                    <Button size="lg" onClick={confirmQr} loading={phase === "saving"}>Konfirmasi hadir</Button>
+                  </div>
+                </div>
+              </div>
+            )}
+            {bannerInStage && bannerEl && <div className="absolute inset-x-3 bottom-3 z-10 rounded-xl bg-surface shadow-pop">{bannerEl}</div>}
             {!scanning && (
               <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 px-6 text-center text-white">
                 <span className="flex h-20 w-20 items-center justify-center rounded-full bg-white/10 ring-8 ring-white/5">
@@ -300,37 +333,7 @@ export function Scanner({ summary, isAdmin, dateLabel, scanAllowed, autoRecord =
           </div>
         </section>
 
-        {banner && (
-          <div role="status" aria-live="polite" className={cn("flex items-start gap-3 rounded-xl border px-4 py-3.5 text-base font-semibold shadow-card", bannerStyle[banner.tone])}>
-            <BannerIcon className="mt-0.5 h-6 w-6 shrink-0" aria-hidden />
-            <p>{banner.text}</p>
-          </div>
-        )}
-
-        {pending && (
-          <section className="card overflow-hidden border-brand ring-2 ring-brand/20" aria-live="polite">
-            <div className="flex items-center gap-2 bg-brand-light px-5 py-2.5 text-sm font-medium text-brand">
-              <ShieldCheck className="h-4 w-4" aria-hidden />Konfirmasi identitas siswa
-            </div>
-            <div className="flex items-start gap-4 p-5">
-              <span aria-hidden className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full bg-navy text-xl font-semibold text-white">
-                {(pending.student.full_name ?? "?").trim().split(/\s+/).slice(0, 2).map((w) => w[0]).join("").toUpperCase()}
-              </span>
-              <div className="min-w-0 flex-1">
-                <p className="text-2xl font-semibold leading-tight tracking-tight">{pending.student.full_name}</p>
-                <p className="mt-1 flex flex-wrap gap-2 text-sm">
-                  <span className="tabular rounded-full bg-canvas px-2.5 py-0.5 text-ink-muted">NIS {pending.student.nis}</span>
-                  {pending.student.class_name && <span className="rounded-full bg-canvas px-2.5 py-0.5 text-ink-muted">Kelas {pending.student.class_name}</span>}
-                </p>
-                <p className="mt-3 rounded-lg bg-canvas px-3 py-2 text-sm">Pastikan siswa yang berdiri di depan Anda adalah siswa ini. QR saja bukan bukti kehadiran.</p>
-              </div>
-            </div>
-            <div className="flex flex-col-reverse gap-2 border-t border-line bg-canvas/50 px-5 py-4 sm:flex-row sm:justify-end">
-              <Button variant="outline" size="lg" onClick={cancelQr} disabled={phase === "saving"}>Bukan siswa ini / batal</Button>
-              <Button size="lg" onClick={confirmQr} loading={phase === "saving"}>Konfirmasi hadir</Button>
-            </div>
-          </section>
-        )}
+        {!bannerInStage && bannerEl}
 
         <section className="card p-5">
           <h2 className="flex items-center gap-2.5 text-base font-semibold">
@@ -380,7 +383,7 @@ export function Scanner({ summary, isAdmin, dateLabel, scanAllowed, autoRecord =
         </section>
       </div>
 
-      <aside className="space-y-4 lg:col-span-2">
+      <aside className="min-w-0 space-y-4">
         <section className="card overflow-hidden">
           <div className="dash-hero p-5 text-white">
             <h2 className="flex items-center gap-2 text-base font-semibold"><ClipboardList className="h-4 w-4" aria-hidden />Ringkasan hari ini</h2>
