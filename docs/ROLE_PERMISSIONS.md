@@ -15,6 +15,14 @@ Penegakan ada di RLS dan fungsi basis data. Halaman Pengaturan > Peran hanya ref
 | Ajukan pulang awal | Atas nama | Atas nama | Atas nama | Atas nama | Atas nama | Anak sendiri |
 | Laporan dan ekspor | Ya | Ya | Ya | Kelas sendiri | Tidak | Tidak |
 | Ekspor data siswa | Ya | Ya | Ya | Tidak | Tidak | Tidak |
+| Rekonsiliasi akhir hari | Ya | Ya | Tidak | Kelas sendiri | Tidak | Tidak |
+| Catat absensi tanggal lalu (susulan) | Ya | Ya | Tidak | Tidak | Tidak | Tidak |
+| Tambah, impor, dan ubah data siswa | Ya | Ya | Tidak | Tidak | Tidak | Tidak |
+| Kelola kelas dan kenaikan kelas | Ya | Ya | Tidak | Tidak | Tidak | Tidak |
+| Cetak Kartu Kehadiran / kartu QR | Ya | Ya | Tidak | Tidak | Tidak | Tidak |
+| Lihat jejak audit (halaman Aktivitas) | Ya | Ya | Ya | Tidak | Tidak | Tidak |
+| Ubah data pengguna (nama, nomor telepon) | Semua | Guru, operator, orang tua | Tidak | Tidak | Tidak | Tidak |
+| Cadangan data dan log kesalahan teknis | Ya | Tidak | Tidak | Tidak | Tidak | Tidak |
 | Pengaturan | Ya | Ya | Tidak | Tidak | Tidak | Tidak |
 | Kelola peran | Semua | Guru, operator, orang tua | Tidak | Tidak | Tidak | Tidak |
 

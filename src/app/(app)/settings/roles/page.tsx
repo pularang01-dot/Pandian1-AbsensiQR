@@ -16,7 +16,14 @@ const ROWS: { feature: string; allow: Record<string, string> }[] = [
   { feature: "Konfirmasi partisipasi dispensasi", allow: { super_admin: "Ya", school_admin: "Ya", teacher: "Guru pendamping" } },
   { feature: "Mencatat serah terima pulang awal", allow: { super_admin: "Ya", school_admin: "Ya", principal: "Ya", teacher: "Ya", operator: "Ya" } },
   { feature: "Laporan dan ekspor", allow: { super_admin: "Ya", school_admin: "Ya", principal: "Ya", teacher: "Kelas sendiri" } },
-  { feature: "Pengaturan dan pengguna", allow: { super_admin: "Semua peran", school_admin: "Guru, operator, orang tua" } },
+  { feature: "Rekonsiliasi akhir hari", allow: { super_admin: "Ya", school_admin: "Ya", teacher: "Kelas sendiri" } },
+  { feature: "Mencatat absensi tanggal lalu (susulan)", allow: { super_admin: "Ya", school_admin: "Ya" } },
+  { feature: "Tambah, impor, dan ubah data siswa", allow: { super_admin: "Ya", school_admin: "Ya" } },
+  { feature: "Kelola kelas dan kenaikan kelas", allow: { super_admin: "Ya", school_admin: "Ya" } },
+  { feature: "Cetak Kartu Kehadiran / kartu QR", allow: { super_admin: "Ya", school_admin: "Ya" } },
+  { feature: "Melihat jejak audit (Aktivitas)", allow: { super_admin: "Ya", school_admin: "Ya", principal: "Ya" } },
+  { feature: "Cadangan data dan log kesalahan teknis", allow: { super_admin: "Ya" } },
+  { feature: "Pengaturan, pengguna, dan ubah data pengguna", allow: { super_admin: "Semua peran", school_admin: "Guru, operator, orang tua" } },
 ];
 
 export default async function RolesPage() {
