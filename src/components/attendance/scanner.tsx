@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { AlertTriangle, Camera, CameraOff, CheckCircle2, ClipboardList, FlipHorizontal, History, Search, ShieldCheck, UserSearch, WifiOff, XCircle, Zap } from "lucide-react";
+import { AlertTriangle, Camera, CameraOff, CheckCircle2, ClipboardList, FlipHorizontal, History, Keyboard, Search, ShieldCheck, UserSearch, WifiOff, XCircle, Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Field, Input, Select, Textarea } from "@/components/ui/field";
 import { lookupQrAction, recordAttendanceAction, searchStudentsAction, type StudentHit } from "@/app/(app)/attendance/actions";
@@ -13,6 +13,12 @@ type Summary = { total: number; present: number; late: number; sick: number; per
 type Phase = "idle" | "starting" | "scanning" | "confirm" | "saving";
 type CamIssue = null | "unsupported" | "denied" | "nodevice" | "failed";
 type LogItem = { id: number; ok: boolean; text: string; time: string };
+
+/** Pembaca bawaan peramban (dipercepat perangkat keras). Tidak ada di semua peramban, maka ada cadangan zxing. */
+type NativeDetector = { detect: (src: HTMLVideoElement) => Promise<{ rawValue: string }[]> };
+type NativeDetectorCtor = { new (o: { formats: string[] }): NativeDetector; getSupportedFormats: () => Promise<string[]> };
+const WANTED_FORMATS = ["qr_code", "code_128", "code_39", "ean_13", "ean_8", "upc_a", "itf", "codabar"];
+const BACK_RE = /back|rear|belakang|environment/i;
 
 const CAM_TEXT: Record<Exclude<CamIssue, null>, string> = {
   unsupported: "Peramban ini tidak mendukung kamera, atau halaman tidak dibuka lewat HTTPS. Gunakan pencarian manual di bawah.",
@@ -61,6 +67,30 @@ export function Scanner({ summary, isAdmin, dateLabel, scanAllowed, autoRecord =
     window.addEventListener("online", update);
     window.addEventListener("offline", update);
     return () => { window.removeEventListener("online", update); window.removeEventListener("offline", update); };
+  }, []);
+
+  // Alat pemindai barcode USB/Bluetooth bekerja seperti keyboard: mengetik sangat cepat lalu menekan Enter.
+  // Ketikan manusia lebih lambat dari 100 ms per huruf sehingga tidak salah dibaca sebagai pemindaian.
+  useEffect(() => {
+    let buf = "";
+    let last = 0;
+    const onKey = (e: KeyboardEvent) => {
+      const t = e.target as HTMLElement | null;
+      if (t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.tagName === "SELECT" || t.isContentEditable)) return;
+      if (e.ctrlKey || e.metaKey || e.altKey) return;
+      const now = performance.now();
+      if (now - last > 100) buf = "";
+      last = now;
+      if (e.key === "Enter") {
+        const code = buf;
+        buf = "";
+        if (code.length >= 8) { e.preventDefault(); void handleRef.current(code); }
+        return;
+      }
+      if (e.key.length === 1) buf += e.key;
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
   }, []);
 
   const stopScanner = useCallback(() => {
@@ -135,6 +165,54 @@ export function Scanner({ summary, isAdmin, dateLabel, scanAllowed, autoRecord =
   const handleRef = useRef(handleToken);
   useEffect(() => { handleRef.current = handleToken; }, [handleToken]);
 
+  /** Jalur cepat: BarcodeDetector bawaan peramban membaca QR dan barcode 1D langsung dari video. */
+  async function startNative(Native: NativeDetectorCtor, chosen?: string) {
+    const formats = (await Native.getSupportedFormats()).filter((f) => WANTED_FORMATS.includes(f));
+    if (!formats.includes("qr_code")) return null;
+    const detector = new Native({ formats });
+    const base = chosen ? { deviceId: { exact: chosen } } : { facingMode: { ideal: "environment" } };
+    let stream: MediaStream;
+    try {
+      stream = await navigator.mediaDevices.getUserMedia({ audio: false, video: { ...base, width: { ideal: 1920 }, height: { ideal: 1080 }, frameRate: { ideal: 30 } } });
+    } catch (err) {
+      if (err instanceof Error && err.name !== "OverconstrainedError") throw err;
+      stream = await navigator.mediaDevices.getUserMedia({ audio: false, video: base });
+    }
+    const video = videoRef.current;
+    if (!video) { stream.getTracks().forEach((t) => t.stop()); return null; }
+    video.srcObject = stream;
+    await video.play();
+
+    const track = stream.getVideoTracks()[0];
+    const settings = track.getSettings();
+    const all = (await navigator.mediaDevices.enumerateDevices()).filter((d) => d.kind === "videoinput");
+    setCameras(all.map((d, i) => ({ id: d.deviceId, label: d.label || `Kamera ${i + 1}` })));
+    setDeviceId(settings.deviceId ?? chosen ?? "");
+    setMirror(!(settings.facingMode === "environment" || BACK_RE.test(track.label)));
+
+    let alive = true;
+    const tick = async () => {
+      if (!alive) return;
+      try {
+        if (video.readyState >= 2 && !busyRef.current) {
+          const codes = await detector.detect(video);
+          if (codes[0]?.rawValue) void handleRef.current(codes[0].rawValue);
+        }
+      } catch { /* bingkai gagal dibaca, lanjut ke berikutnya */ }
+      if (!alive) return;
+      setTimeout(tick, 40);
+    };
+    void tick();
+    return { stop: () => { alive = false; stream.getTracks().forEach((t) => t.stop()); video.srcObject = null; } };
+  }
+
+  async function applyFocus() {
+    try {
+      const track = (videoRef.current?.srcObject as MediaStream | null)?.getVideoTracks()[0];
+      await track?.applyConstraints({ advanced: [{ focusMode: "continuous" } as unknown as MediaTrackConstraintSet] });
+    } catch { /* tidak didukung */ }
+  }
+
   async function startScanner(chosen?: string) {
     setCamIssue(null);
     setBanner(null);
@@ -143,6 +221,18 @@ export function Scanner({ summary, isAdmin, dateLabel, scanAllowed, autoRecord =
     setPhase("starting");
     try {
       controlsRef.current?.stop();
+      controlsRef.current = null;
+      const Native = (window as unknown as { BarcodeDetector?: NativeDetectorCtor }).BarcodeDetector;
+      if (Native) {
+        const ctl = await startNative(Native, chosen || deviceId || undefined);
+        if (ctl) {
+          controlsRef.current = ctl;
+          await applyFocus();
+          busyRef.current = false;
+          setPhase("scanning");
+          return;
+        }
+      }
       const { BrowserQRCodeReader } = await import("@zxing/browser");
       const devices = await BrowserQRCodeReader.listVideoInputDevices();
       if (devices.length === 0) { setPhase("idle"); return setCamIssue("nodevice"); }
@@ -167,11 +257,7 @@ export function Scanner({ summary, isAdmin, dateLabel, scanAllowed, autoRecord =
         if (err instanceof Error && (err.name === "NotAllowedError" || err.name === "SecurityError")) throw err;
         controlsRef.current = await reader.decodeFromVideoDevice(use, videoRef.current, onResult);
       }
-      // Fokus otomatis berkelanjutan bila didukung perangkat (diabaikan bila tidak).
-      try {
-        const track = (videoRef.current.srcObject as MediaStream | null)?.getVideoTracks()[0];
-        await track?.applyConstraints({ advanced: [{ focusMode: "continuous" } as unknown as MediaTrackConstraintSet] });
-      } catch { /* tidak didukung */ }
+      await applyFocus();
       busyRef.current = false;
       setPhase("scanning");
     } catch (err) {
@@ -266,6 +352,9 @@ export function Scanner({ summary, isAdmin, dateLabel, scanAllowed, autoRecord =
               <span className="inline-flex items-center gap-1.5 rounded-full bg-black/45 px-3 py-1.5 text-white backdrop-blur">
                 {autoRecord ? <Zap className="h-3.5 w-3.5 text-[#F5B82E]" aria-hidden /> : <ShieldCheck className="h-3.5 w-3.5" aria-hidden />}
                 {autoRecord ? "Mode cepat" : "Dengan konfirmasi"}
+              </span>
+              <span className="hidden items-center gap-1.5 rounded-full bg-black/45 px-3 py-1.5 text-white backdrop-blur sm:inline-flex">
+                <Keyboard className="h-3.5 w-3.5" aria-hidden />Alat pemindai USB siap
               </span>
             </div>
             {scanning && phase === "scanning" && (
