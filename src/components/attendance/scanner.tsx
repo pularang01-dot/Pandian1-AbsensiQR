@@ -2,12 +2,13 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { AlertTriangle, Camera, CameraOff, CheckCircle2, ClipboardList, FlipHorizontal, History, Keyboard, Search, ShieldCheck, UserSearch, WifiOff, XCircle, Zap } from "lucide-react";
+import { AlertTriangle, Camera, CameraOff, CheckCircle2, ClipboardList, FlipHorizontal, History, Keyboard, Search, ShieldCheck, UserSearch, Volume2, VolumeX, WifiOff, XCircle, Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Field, Input, Select, Textarea } from "@/components/ui/field";
 import { lookupQrAction, recordAttendanceAction, searchStudentsAction, type StudentHit } from "@/app/(app)/attendance/actions";
 import { RESULT_MESSAGE, type RpcResult } from "@/lib/validation/attendance";
 import { cn } from "@/lib/utils";
+import { playCue, primeAudio, type Cue } from "@/lib/audio/feedback";
 
 type Summary = { total: number; present: number; late: number; sick: number; permission: number; official: number; unexcused: number; unverified: number; unrecorded: number };
 type Phase = "idle" | "starting" | "scanning" | "confirm" | "saving";
@@ -36,6 +37,21 @@ export function Scanner({ summary, isAdmin, dateLabel, scanAllowed, autoRecord =
   const busyRef = useRef(false);
   const lastRef = useRef<{ token: string; at: number }>({ token: "", at: 0 });
   const logId = useRef(0);
+
+  // Suara penanda: pilihan disimpan per perangkat, bawaan menyala.
+  const [sound, setSound] = useState(true);
+  const soundRef = useRef(true);
+  useEffect(() => {
+    try { if (localStorage.getItem("scanner-sound") === "off") { setSound(false); soundRef.current = false; } } catch { /* abaikan */ }
+  }, []);
+  const cue = useCallback((k: Cue) => { if (soundRef.current) playCue(k); }, []);
+  function toggleSound() {
+    const next = !sound;
+    setSound(next);
+    soundRef.current = next;
+    try { localStorage.setItem("scanner-sound", next ? "on" : "off"); } catch { /* abaikan */ }
+    if (next) { primeAudio(); playCue("success"); }
+  }
 
   const [phase, setPhase] = useState<Phase>("idle");
   const [camIssue, setCamIssue] = useState<CamIssue>(null);
@@ -112,20 +128,23 @@ export function Scanner({ summary, isAdmin, dateLabel, scanAllowed, autoRecord =
         setBanner({ tone: "success", text: `${r.full_name ?? student.full_name} tercatat ${label}.` });
         addLog(true, `${r.full_name ?? student.full_name}: ${label}`);
         navigator.vibrate?.(60);
+        cue("success");
         router.refresh();
       } else {
         const text = r.message ?? RESULT_MESSAGE[r.result] ?? "Absensi tidak tercatat.";
         setBanner({ tone: r.result === "duplicate" ? "warning" : "danger", text });
         addLog(false, text);
+        cue(r.result === "duplicate" ? "warning" : "error");
       }
     } catch {
       setBanner({ tone: "danger", text: "Gagal terhubung ke server. Absensi BELUM tersimpan. Pindai ulang setelah koneksi pulih." });
       addLog(false, "Gagal menyimpan (koneksi)");
+      cue("error");
     }
     setPending(null);
     setPhase("scanning");
     setTimeout(() => { busyRef.current = false; }, 1200);
-  }, [addLog, router]);
+  }, [addLog, cue, router]);
 
   const handleToken = useCallback(async (token: string) => {
     const now = Date.now();
@@ -150,17 +169,20 @@ export function Scanner({ summary, isAdmin, dateLabel, scanAllowed, autoRecord =
       if (r.result === "duplicate") {
         setBanner({ tone: "warning", text: `${r.full_name ?? "Siswa"} sudah tercatat hari ini sebagai ${r.existing_status ?? "-"}. Tidak dicatat ulang.` });
         addLog(false, `Scan ganda: ${r.full_name ?? "siswa"}`);
+        cue("warning");
       } else {
         setBanner({ tone: "danger", text });
         addLog(false, text);
+        cue("error");
       }
       navigator.vibrate?.(150);
     } catch {
       setBanner({ tone: "danger", text: "Gagal terhubung ke server. Data BELUM tersimpan. Periksa koneksi internet." });
       addLog(false, "Gagal terhubung ke server");
+      cue("error");
     }
     setTimeout(() => { busyRef.current = false; }, 1200);
-  }, [addLog, autoRecord, recordQr]);
+  }, [addLog, autoRecord, cue, recordQr]);
 
   const handleRef = useRef(handleToken);
   useEffect(() => { handleRef.current = handleToken; }, [handleToken]);
@@ -214,6 +236,7 @@ export function Scanner({ summary, isAdmin, dateLabel, scanAllowed, autoRecord =
   }
 
   async function startScanner(chosen?: string) {
+    primeAudio();
     setCamIssue(null);
     setBanner(null);
     if (!navigator.mediaDevices?.getUserMedia) return setCamIssue("unsupported");
@@ -298,6 +321,7 @@ export function Scanner({ summary, isAdmin, dateLabel, scanAllowed, autoRecord =
       if (r.result === "recorded") {
         setBanner({ tone: "success", text: `${picked.name} tercatat secara manual.` });
         addLog(true, `${picked.name}: manual (${mStatus})`);
+        cue("success");
         setPicked(null); setQ(""); setHits([]); setMNote(""); setMStatus("present");
         router.refresh();
       } else {
@@ -411,6 +435,10 @@ export function Scanner({ summary, isAdmin, dateLabel, scanAllowed, autoRecord =
                 <Button size="lg" variant="ghost" onClick={() => setMirror((m) => !m)} aria-pressed={mirror}><FlipHorizontal className="h-5 w-5" aria-hidden />Balik tampilan</Button>
               </>
             )}
+            <Button size="lg" variant="ghost" onClick={toggleSound} aria-pressed={sound}>
+              {sound ? <Volume2 className="h-5 w-5" aria-hidden /> : <VolumeX className="h-5 w-5" aria-hidden />}
+              {sound ? "Suara menyala" : "Suara mati"}
+            </Button>
             {cameras.length > 1 && (
               <div className="flex-1">
                 <label htmlFor="camera" className="sr-only">Pilih kamera</label>
