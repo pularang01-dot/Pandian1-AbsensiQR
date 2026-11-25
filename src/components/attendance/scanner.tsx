@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { AlertTriangle, Camera, CameraOff, CheckCircle2, ClipboardList, FlipHorizontal, History, Keyboard, Search, ShieldCheck, UserSearch, Volume2, VolumeX, WifiOff, XCircle, Zap } from "lucide-react";
+import { AlertTriangle, Camera, CameraOff, CheckCircle2, ClipboardList, FlipHorizontal, History, Keyboard, Search, ShieldCheck, FlaskConical, UserSearch, Volume2, VolumeX, WifiOff, XCircle, Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Field, Input, Select, Textarea } from "@/components/ui/field";
 import { lookupQrAction, recordAttendanceAction, searchStudentsAction, type StudentHit } from "@/app/(app)/attendance/actions";
@@ -44,6 +44,19 @@ export function Scanner({ summary, isAdmin, dateLabel, scanAllowed, autoRecord =
   useEffect(() => {
     try { if (localStorage.getItem("scanner-sound") === "off") { setSound(false); soundRef.current = false; } } catch { /* abaikan */ }
   }, []);
+  // Mode uji: QR hanya dibaca dan dicocokkan, tidak ada yang dicatat. Tidak disimpan, selalu mati saat halaman dibuka.
+  const [testMode, setTestMode] = useState(false);
+  const testRef = useRef(false);
+  function toggleTest() {
+    const next = !testMode;
+    setTestMode(next);
+    testRef.current = next;
+    setPending(null);
+    setBanner(null);
+    if (phase === "confirm") setPhase("scanning");
+    busyRef.current = false;
+    lastRef.current = { token: "", at: 0 };
+  }
   const cue = useCallback((k: Cue) => { if (soundRef.current) playCue(k); }, []);
   function toggleSound() {
     const next = !sound;
@@ -155,6 +168,23 @@ export function Scanner({ summary, isAdmin, dateLabel, scanAllowed, autoRecord =
     setBanner(null);
     try {
       const r = await lookupQrAction(token);
+      if (testRef.current) {
+        // Uji: hanya menampilkan hasil pembacaan. Tidak memanggil fungsi pencatatan sama sekali.
+        if (r.result === "ok" || r.result === "duplicate") {
+          const detail = `NIS ${r.nis ?? "-"}${r.class_name ? `, kelas ${r.class_name}` : ""}`;
+          const extra = r.result === "duplicate" ? ` Siswa ini sudah tercatat hari ini (${r.existing_status ?? "-"}).` : "";
+          setBanner({ tone: "success", text: `UJI: QR terbaca. ${r.full_name} (${detail}).${extra} Tidak dicatat.` });
+          addLog(true, `[Uji] ${r.full_name}: terbaca`);
+          cue("success");
+        } else {
+          const text = r.message ?? RESULT_MESSAGE[r.result] ?? "QR tidak dapat diproses.";
+          setBanner({ tone: "danger", text: `UJI: ${text} Tidak dicatat.` });
+          addLog(false, `[Uji] ${text}`);
+          cue("error");
+        }
+        setTimeout(() => { busyRef.current = false; }, 900);
+        return;
+      }
       if (r.result === "ok" && autoRecord && r.student_id) {
         // Mode cepat (diatur admin): tanpa konfirmasi visual, langsung dicatat.
         await recordQr(token, r, true);
@@ -377,6 +407,11 @@ export function Scanner({ summary, isAdmin, dateLabel, scanAllowed, autoRecord =
                 {autoRecord ? <Zap className="h-3.5 w-3.5 text-[#F5B82E]" aria-hidden /> : <ShieldCheck className="h-3.5 w-3.5" aria-hidden />}
                 {autoRecord ? "Mode cepat" : "Dengan konfirmasi"}
               </span>
+              {testMode && (
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-[#F5B82E] px-3 py-1.5 font-semibold text-navy">
+                  <FlaskConical className="h-3.5 w-3.5" aria-hidden />Mode uji: tidak dicatat
+                </span>
+              )}
               <span className="hidden items-center gap-1.5 rounded-full bg-black/45 px-3 py-1.5 text-white backdrop-blur sm:inline-flex">
                 <Keyboard className="h-3.5 w-3.5" aria-hidden />Alat pemindai USB siap
               </span>
@@ -435,6 +470,9 @@ export function Scanner({ summary, isAdmin, dateLabel, scanAllowed, autoRecord =
                 <Button size="lg" variant="ghost" onClick={() => setMirror((m) => !m)} aria-pressed={mirror}><FlipHorizontal className="h-5 w-5" aria-hidden />Balik tampilan</Button>
               </>
             )}
+            <Button size="lg" variant={testMode ? "primary" : "ghost"} onClick={toggleTest} aria-pressed={testMode}>
+              <FlaskConical className="h-5 w-5" aria-hidden />{testMode ? "Akhiri uji" : "Mode uji"}
+            </Button>
             <Button size="lg" variant="ghost" onClick={toggleSound} aria-pressed={sound}>
               {sound ? <Volume2 className="h-5 w-5" aria-hidden /> : <VolumeX className="h-5 w-5" aria-hidden />}
               {sound ? "Suara menyala" : "Suara mati"}
