@@ -19,32 +19,53 @@ export function primeAudio() {
   if (c && c.state === "suspended") void c.resume();
 }
 
-type Note = { f: number; at: number; dur: number; type: OscillatorType; vol: number };
+type Note = { f: number; at: number; dur: number; vol: number; kind: "bell" | "buzz" };
+
+// "Tring": dua pukulan lonceng tinggi beruntun. Peringatan: dua dentingan lebih rendah. Gagal: dengung rendah.
 const CUES: Record<Cue, Note[]> = {
-  // Dua nada naik: tercatat.
-  success: [{ f: 880, at: 0, dur: 0.11, type: "sine", vol: 0.28 }, { f: 1319, at: 0.1, dur: 0.18, type: "sine", vol: 0.28 }],
-  // Dua nada sama yang pendek: sudah tercatat atau perlu perhatian.
-  warning: [{ f: 600, at: 0, dur: 0.1, type: "triangle", vol: 0.3 }, { f: 600, at: 0.16, dur: 0.1, type: "triangle", vol: 0.3 }],
-  // Satu nada rendah panjang: gagal.
-  error: [{ f: 190, at: 0, dur: 0.38, type: "sawtooth", vol: 0.2 }],
+  success: [{ f: 1760, at: 0, dur: 1.0, vol: 0.9, kind: "bell" }, { f: 2349, at: 0.13, dur: 1.2, vol: 0.9, kind: "bell" }],
+  warning: [{ f: 988, at: 0, dur: 0.5, vol: 0.85, kind: "bell" }, { f: 988, at: 0.22, dur: 0.6, vol: 0.85, kind: "bell" }],
+  error: [{ f: 200, at: 0, dur: 0.5, vol: 0.6, kind: "buzz" }],
 };
+
+// Nada lonceng terdiri dari beberapa nada atas yang tidak selaras, itulah yang membuatnya berdenting.
+const BELL_PARTIALS: [number, number][] = [[1, 1], [2.01, 0.55], [2.76, 0.4], [5.4, 0.22]];
+
+let master: GainNode | null = null;
+function output(c: AudioContext): AudioNode {
+  if (!master) {
+    const comp = c.createDynamicsCompressor();
+    master = c.createGain();
+    master.gain.value = 1;
+    master.connect(comp).connect(c.destination);
+  }
+  return master;
+}
 
 export function playCue(kind: Cue) {
   const c = context();
   if (!c) return;
   if (c.state === "suspended") void c.resume();
+  const out = output(c);
   const t0 = c.currentTime;
   for (const n of CUES[kind]) {
-    const osc = c.createOscillator();
-    const gain = c.createGain();
-    osc.type = n.type;
-    osc.frequency.value = n.f;
     const start = t0 + n.at;
-    gain.gain.setValueAtTime(0.0001, start);
-    gain.gain.exponentialRampToValueAtTime(n.vol, start + 0.015);
-    gain.gain.exponentialRampToValueAtTime(0.0001, start + n.dur);
-    osc.connect(gain).connect(c.destination);
-    osc.start(start);
-    osc.stop(start + n.dur + 0.02);
+    const parts: [number, number][] = n.kind === "bell" ? BELL_PARTIALS : [[1, 1]];
+    const total = parts.reduce((a, [, amp]) => a + amp, 0);
+    for (const [ratio, amp] of parts) {
+      const osc = c.createOscillator();
+      const gain = c.createGain();
+      osc.type = n.kind === "bell" ? "sine" : "sawtooth";
+      osc.frequency.value = n.f * ratio;
+      // Nada atas padam lebih cepat daripada nada dasar, seperti lonceng sungguhan.
+      const life = n.dur / (n.kind === "bell" ? Math.max(1, ratio * 0.6) : 1);
+      const peak = (n.vol * amp) / total;
+      gain.gain.setValueAtTime(0.0001, start);
+      gain.gain.exponentialRampToValueAtTime(peak, start + 0.004);
+      gain.gain.exponentialRampToValueAtTime(0.0001, start + life);
+      osc.connect(gain).connect(out);
+      osc.start(start);
+      osc.stop(start + life + 0.03);
+    }
   }
 }
