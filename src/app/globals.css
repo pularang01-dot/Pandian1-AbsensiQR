@@ -80,6 +80,10 @@
   @media (prefers-reduced-motion: reduce) {
     .splash-scan, .splash-glow { display: none; }
   }
+  @keyframes nav-grow { from { width: 0; } to { width: 88%; } }
+  .nav-bar { position: fixed; left: 0; top: 0; z-index: 110; height: 3px; background: #F5B82E; box-shadow: 0 0 10px rgba(245,184,46,0.7); pointer-events: none; }
+  .nav-bar[data-state="loading"] { animation: nav-grow 6s cubic-bezier(0.1, 0.6, 0.2, 1) forwards; }
+  .nav-bar[data-state="done"] { width: 100%; opacity: 0; transition: width 0.2s ease-out, opacity 0.4s ease 0.15s; }
   @keyframes ring-draw { from { stroke-dashoffset: var(--ring-circ); } to { stroke-dashoffset: var(--ring-offset); } }
   @media (prefers-reduced-motion: no-preference) {
     .ring-progress { animation: ring-draw 1.1s cubic-bezier(0.22, 1, 0.36, 1) both; }

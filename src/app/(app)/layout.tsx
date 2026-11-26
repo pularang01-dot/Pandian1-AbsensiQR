@@ -1,6 +1,7 @@
-import type { ReactNode } from "react";
+import { Suspense, type ReactNode } from "react";
 import { requireUser } from "@/lib/auth/session";
 import { createClient } from "@/lib/supabase/server";
+import { NavProgress } from "@/components/layout/nav-progress";
 import { AppShell } from "@/components/layout/app-shell";
 
 export default async function AppLayout({ children }: { children: ReactNode }) {
@@ -15,8 +16,11 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
   const schoolName = typeof setting?.value === "string" && setting.value ? setting.value : "SDN PANDIAN 1 SUMENEP";
 
   return (
+    <>
+    <Suspense fallback={null}><NavProgress /></Suspense>
     <AppShell role={user.role} fullName={user.fullName} schoolName={schoolName} unreadCount={count ?? 0}>
       {children}
     </AppShell>
+    </>
   );
 }

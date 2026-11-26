@@ -1,4 +1,5 @@
 import "server-only";
+import { cache } from "react";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { homePathFor, isRole, type Role } from "./roles";
@@ -15,7 +16,8 @@ export type SessionUser = {
 const PRIORITY: Role[] = ["super_admin", "school_admin", "principal", "teacher", "operator", "parent"];
 
 /** Mengambil pengguna terautentikasi beserta peran aktifnya. Mengembalikan null bila tidak valid/nonaktif. */
-export async function getSessionUser(): Promise<SessionUser | null> {
+// cache(): layout dan halaman dalam satu permintaan memakai hasil yang sama, tanpa memanggil Supabase berulang kali.
+export const getSessionUser = cache(async (): Promise<SessionUser | null> => {
   const supabase = await createClient();
   const {
     data: { user },
@@ -34,7 +36,7 @@ export async function getSessionUser(): Promise<SessionUser | null> {
 
   const role = PRIORITY.find((r) => roles.includes(r)) ?? roles[0];
   return { id: user.id, email: user.email ?? null, fullName: profile.full_name, roles, role };
-}
+});
 
 /** Wajib login. Mengarahkan ke /login bila tidak ada sesi yang valid. */
 export async function requireUser(): Promise<SessionUser> {
