@@ -17,7 +17,7 @@ const ROWS: { feature: string; allow: Record<string, string> }[] = [
   { feature: "Mencatat serah terima pulang awal", allow: { super_admin: "Ya", school_admin: "Ya", principal: "Ya", teacher: "Ya", operator: "Ya" } },
   { feature: "Laporan dan ekspor", allow: { super_admin: "Ya", school_admin: "Ya", principal: "Ya", teacher: "Kelas sendiri" } },
   { feature: "Rekonsiliasi akhir hari", allow: { super_admin: "Ya", school_admin: "Ya", teacher: "Kelas sendiri" } },
-  { feature: "Mencatat absensi tanggal lalu (susulan)", allow: { super_admin: "Ya", school_admin: "Ya" } },
+  { feature: "Mencatat absensi tanggal lalu (susulan)", allow: { super_admin: "Ya", school_admin: "Ya", teacher: "Kelas sendiri (wali kelas)" } },
   { feature: "Tambah, impor, dan ubah data siswa", allow: { super_admin: "Ya", school_admin: "Ya" } },
   { feature: "Kelola kelas dan kenaikan kelas", allow: { super_admin: "Ya", school_admin: "Ya" } },
   { feature: "Cetak Kartu Kehadiran / kartu QR", allow: { super_admin: "Ya", school_admin: "Ya" } },

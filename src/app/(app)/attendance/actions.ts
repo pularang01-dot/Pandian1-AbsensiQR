@@ -130,9 +130,9 @@ export async function recordClassAttendanceAction(input: unknown): Promise<Class
   };
 }
 
-/** Absensi susulan untuk tanggal lampau (khusus admin, alasan wajib). Aturan ditegakkan di basis data dan tercatat di audit. */
+/** Absensi susulan untuk tanggal lampau (admin, atau wali kelas untuk kelasnya sendiri; alasan wajib). Aturan ditegakkan di basis data dan tercatat di audit. */
 export async function recordBackdatedAttendanceAction(input: unknown): Promise<ClassAttendanceResult> {
-  await requireRole(["super_admin", "school_admin"]);
+  await requireRole(["super_admin", "school_admin", "teacher"]);
   const parsed = backdatedAttendanceSchema.safeParse(input);
   if (!parsed.success) return { ok: false, message: parsed.error.issues[0]?.message ?? "Data tidak valid." };
   const supabase = await createClient();

@@ -68,7 +68,8 @@ Beban: pindai beruntun saat jam masuk (misalnya 200 siswa dalam 15 menit).
 - [ ] Tampilan ponsel: lima tombol status muat satu baris, mudah ditekan, bilah Simpan di bawah tidak menutupi baris terakhir.
 
 ## Absensi susulan
-- [ ] Admin: kolom "Tanggal susulan" muncul; guru tidak melihatnya dan ?tanggal= di alamat diabaikan untuk guru.
+- [ ] Admin dan wali kelas: kolom "Tanggal susulan" muncul; operator tidak melihatnya dan ?tanggal= di alamat diabaikan untuk operator.
+- [ ] Wali kelas hanya dapat mengisi susulan untuk kelasnya sendiri; mengubah class di alamat ke kelas lain ditolak ("hanya dapat ... wali kelas yang bersangkutan").
 - [ ] Tanggal hari ini, masa depan, atau lebih dari 30 hari lalu tidak dapat dipilih; spanduk kuning "Mengisi absensi susulan untuk ..." muncul untuk tanggal sah.
 - [ ] Simpan tanpa alasan: tombol Simpan nonaktif; dengan alasan: tersimpan, catatan siswa berawalan "Susulan:" dan tanpa jam masuk.
 - [ ] Hari libur atau Minggu: ditolak dengan pesan jelas. Sesi yang sudah ditutup: ditolak dengan arahan ke Koreksi.
@@ -122,3 +123,18 @@ Beban: pindai beruntun saat jam masuk (misalnya 200 siswa dalam 15 menit).
 - [ ] XLSX, CSV, PDF, dan Cetak berfungsi untuk keduanya (kop surat dan logo tampil); guru hanya melihat kelasnya.
 - [ ] Pengaturan > Tahun ajaran: kolom "Awal semester Genap" ada di form buat dan Ubah; daftar menampilkan "Semester Genap mulai ...". Tanggal di luar rentang tahun ajaran ditolak.
 - [ ] Laporan semester mengikuti tanggal itu: Ganjil berakhir sehari sebelum awal Genap. Bila kosong, memakai 1 Januari.
+
+## Kartu Kehadiran (cetak QR)
+- [ ] Siswa > Kartu QR: pilihan "Gaya kartu" ada: "Kartu kehadiran" (default) dan "Sederhana".
+- [ ] Kartu menampilkan logo sekolah asli, nama siswa, kelas, NISN ("-" bila kosong), NIS, nama sekolah, dan QR yang bisa dipindai.
+- [ ] Nama panjang terpotong rapi, tidak keluar dari kartu.
+- [ ] Cetak: aktifkan "Grafik latar" di dialog cetak peramban, skala 100%, kertas A4: 8 kartu per halaman, warna tampil.
+- [ ] Halaman siswa > "Cetak kartu kehadiran" mencetak kartu satu siswa.
+- [ ] QR pada kartu hanya berisi token; memindainya tetap perlu konfirmasi visual operator.
+
+## Mode cepat pemindai QR
+- [ ] Pengaturan > Aturan absensi: kotak "Langsung catat tanpa konfirmasi (mode cepat)" ada dan bawaannya tidak dicentang.
+- [ ] Tidak dicentang: pindai QR menampilkan siswa dan operator harus menekan konfirmasi.
+- [ ] Dicentang lalu disimpan: pindai QR langsung tercatat Hadir atau Terlambat, banner menampilkan nama siswa, tanpa langkah konfirmasi.
+- [ ] Mode cepat: pindai ulang kartu yang sama tidak mencatat dua kali; kartu tidak valid, hari libur, dan sesi tertutup tetap ditolak.
+- [ ] Perubahan pengaturan tercatat di Log Aktivitas.

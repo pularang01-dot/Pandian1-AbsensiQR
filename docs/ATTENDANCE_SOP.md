@@ -38,7 +38,7 @@ Aturan:
 - Absensi QR bukan bukti kehadiran fisik yang mutlak, dan absensi manual juga bergantung pada kejujuran pencatat; itu sebabnya semua tercatat dan dapat diaudit.
 
 ### Absensi susulan (hari yang terlewat)
-Bila absensi suatu hari tidak sempat dicatat (internet mati, guru lupa), administrator dapat mengisinya di Absen Kelas dengan kolom **Tanggal susulan**.
+Bila absensi suatu hari tidak sempat dicatat (internet mati, guru lupa), administrator, atau wali kelas untuk kelasnya sendiri, dapat mengisinya di Absen Kelas dengan kolom **Tanggal susulan**. Guru lain dan operator tidak dapat.
 
 Aturan:
 - Hanya administrator (super admin atau admin sekolah). Guru dan operator tidak dapat mengisi tanggal lampau.
@@ -53,3 +53,6 @@ Aturan:
 Dashboard administrator dan kepala sekolah menampilkan banner bila ada hari sekolah lalu (maksimal 14 hari ke belakang) yang sesinya belum ditutup dan masih ada siswa belum tercatat, misalnya "Kemarin ada 12 dari 180 siswa belum tercatat dan sesi belum ditutup". Banner hanya pengingat: tidak ada siswa yang otomatis menjadi Alpa. Langkah yang disarankan: minta wali kelas melengkapi Absen Kelas (atau isi lewat absensi susulan), proses izin dan sakit yang tertunda, lalu rekonsiliasi hari itu. Banner hilang setelah sesi ditutup atau semua siswa tercatat.
 
 Pengingat ini baru berjalan setelah administrator mengisi **Tanggal mulai dipakai** di Pengaturan > Aturan absensi (hari pertama aplikasi dipakai sungguhan). Selama kosong, pengingat tidak muncul, jadi data uji coba tidak memicu peringatan.
+
+## Mode cepat pemindai QR
+Admin dapat mencentang "Langsung catat tanpa konfirmasi" di Pengaturan > Aturan absensi. Kartu yang terbaca langsung tercatat tanpa operator mencocokkan wajah dengan nama. Pakai untuk antrean ramai; matikan bila ada indikasi kartu dipinjam. Pindai QR tetap bukan bukti kehadiran fisik dan tidak pernah menentukan pulang lebih awal.

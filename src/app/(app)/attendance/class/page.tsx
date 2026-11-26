@@ -27,6 +27,7 @@ export default async function ClassAttendancePage({ searchParams }: { searchPara
   const supabase = await createClient();
   const today = todayISO();
   const isAdmin = user.roles.some((r) => ADMIN_ROLES.includes(r));
+  const canBackdate = isAdmin || user.roles.includes("teacher");
   const isAdminLike = user.roles.some((r) => ADMIN_ROLES.includes(r)) || user.roles.includes("operator");
 
   const classes = (await loadClasses(pickYear(await loadYears())?.id)).filter((c) => c.is_active);
@@ -36,11 +37,11 @@ export default async function ClassAttendancePage({ searchParams }: { searchPara
   const wanted = asUuid(sp.class);
   const cls = selectable.find((c) => c.id === wanted) ?? selectable[0];
 
-  // Absensi susulan: hanya admin, hanya tanggal lampau (maksimal 30 hari ke belakang).
+  // Absensi susulan: admin, atau wali kelas untuk kelasnya sendiri; hanya tanggal lampau (maksimal 30 hari ke belakang).
   const minDate = shiftDay(today, -30);
   const maxDate = shiftDay(today, -1);
   const askedDate = /^\d{4}-\d{2}-\d{2}$/.test(sp.tanggal ?? "") ? (sp.tanggal as string) : "";
-  const backdate = isAdmin && askedDate >= minDate && askedDate <= maxDate ? askedDate : "";
+  const backdate = canBackdate && askedDate >= minDate && askedDate <= maxDate ? askedDate : "";
   const day = backdate || today;
 
   const header = (
@@ -102,7 +103,7 @@ export default async function ClassAttendancePage({ searchParams }: { searchPara
   return (
     <>
       {header}
-      {isAdminLike && (selectable.length > 1 || isAdmin) && (
+      {(selectable.length > 1 || canBackdate) && (
         <form className="card mb-4 flex flex-wrap items-end gap-3 p-4" action="/attendance/class">
           {selectable.length > 1 && (
             <div>
@@ -112,7 +113,7 @@ export default async function ClassAttendancePage({ searchParams }: { searchPara
               </Select>
             </div>
           )}
-          {isAdmin && (
+          {canBackdate && (
             <div>
               <label htmlFor="tanggal" className="field-label">Tanggal susulan (opsional)</label>
               <Input id="tanggal" name="tanggal" type="date" min={minDate} max={maxDate} defaultValue={backdate} />
