@@ -38,7 +38,8 @@ export default async function SchoolCalendarPage() {
         <section className="card p-5">
           <h2 className="mb-3 text-base font-semibold">Tambah entri</h2>
           <SimpleForm action={addCalendarAction} submitLabel="Tambah" resetOnSuccess>
-            <Field label="Tanggal" htmlFor="calendar_date" required><Input id="calendar_date" name="calendar_date" type="date" /></Field>
+            <Field label="Tanggal mulai" htmlFor="calendar_date" required><Input id="calendar_date" name="calendar_date" type="date" /></Field>
+            <Field label="Sampai tanggal (opsional)" htmlFor="end_date" hint="Isi untuk libur panjang. Untuk jenis Hari libur, Sabtu dan Minggu otomatis dilewati. Maksimal 120 hari."><Input id="end_date" name="end_date" type="date" /></Field>
             <Field label="Jenis" htmlFor="kind" required>
               <Select id="kind" name="kind" defaultValue="holiday">{Object.entries(CALENDAR_KIND_LABEL).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</Select>
             </Field>

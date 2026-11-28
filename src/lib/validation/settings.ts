@@ -31,11 +31,17 @@ export const yearSchema = z
 
 export const CALENDAR_KIND_LABEL: Record<string, string> = { holiday: "Hari libur", extra_school_day: "Hari sekolah tambahan", special_activity: "Kegiatan khusus" };
 
-export const calendarSchema = z.object({
-  calendar_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Tanggal tidak valid."),
-  kind: z.enum(["holiday", "extra_school_day", "special_activity"], { errorMap: () => ({ message: "Pilih jenis." }) }),
-  description: z.string().trim().min(1, "Keterangan wajib diisi.").max(200, "Maksimal 200 karakter."),
-});
+export const CALENDAR_MAX_RANGE_DAYS = 120;
+
+export const calendarSchema = z
+  .object({
+    calendar_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Tanggal tidak valid."),
+    end_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Tanggal akhir tidak valid.").or(z.literal("")).optional().transform((v) => (v ? v : null)),
+    kind: z.enum(["holiday", "special_activity", "extra_school_day"], { message: "Pilih jenis entri." }),
+    description: z.string().trim().min(1, "Keterangan wajib diisi.").max(200, "Keterangan maksimal 200 karakter."),
+  })
+  .refine((v) => v.end_date === null || v.end_date >= v.calendar_date, { path: ["end_date"], message: "Tanggal akhir tidak boleh sebelum tanggal mulai." })
+  .refine((v) => v.end_date === null || (Date.parse(v.end_date) - Date.parse(v.calendar_date)) / 86400000 < CALENDAR_MAX_RANGE_DAYS, { path: ["end_date"], message: `Rentang maksimal ${CALENDAR_MAX_RANGE_DAYS} hari.` });
 
 export const createUserSchema = z.object({
   full_name: z.string().trim().min(2, "Nama minimal 2 karakter.").max(150),

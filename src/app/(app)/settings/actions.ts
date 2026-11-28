@@ -67,13 +67,42 @@ export async function yearTransitionAction(id: string, op: "activate" | "deactiv
 
 export async function addCalendarAction(_p: ActionState, fd: FormData): Promise<ActionState> {
   const user = await requireRole(ADMIN_ROLES);
-  const parsed = calendarSchema.safeParse({ calendar_date: fd.get("calendar_date") ?? "", kind: fd.get("kind") ?? "", description: fd.get("description") ?? "" });
+  const parsed = calendarSchema.safeParse({ calendar_date: fd.get("calendar_date") ?? "", end_date: fd.get("end_date") ?? "", kind: fd.get("kind") ?? "", description: fd.get("description") ?? "" });
   if (!parsed.success) return { ok: false, fieldErrors: zodFieldErrors(parsed.error) };
+  const { calendar_date, end_date, kind, description } = parsed.data;
   const supabase = await createClient();
-  const { error } = await supabase.from("school_calendar").insert({ ...parsed.data, created_by: user.id });
-  if (error) return { ok: false, message: error.code === "23505" ? "Tanggal dengan jenis yang sama sudah ada." : friendlyDbError(error) };
+
+  // Satu tanggal: perilaku lama (galat bila sudah ada).
+  if (!end_date) {
+    const { error } = await supabase.from("school_calendar").insert({ calendar_date, kind, description, created_by: user.id });
+    if (error) return { ok: false, message: error.code === "23505" ? "Tanggal dengan jenis yang sama sudah ada." : friendlyDbError(error) };
+    revalidatePath("/settings/school-calendar");
+    return { ok: true, message: "Entri kalender ditambahkan." };
+  }
+
+  // Rentang: untuk libur, hari yang memang bukan hari sekolah (mis. Sabtu dan Minggu) dilewati.
+  const { data: setting } = await supabase.from("system_settings").select("value").eq("key", "attendance.school_days").maybeSingle();
+  const schoolDays = Array.isArray(setting?.value) ? (setting.value as unknown[]).map(Number) : [1, 2, 3, 4, 5];
+  const dates: string[] = [];
+  let skippedOff = 0;
+  for (let t = Date.parse(calendar_date); t <= Date.parse(end_date); t += 86400000) {
+    const d = new Date(t);
+    const isodow = d.getUTCDay() === 0 ? 7 : d.getUTCDay();
+    if (kind === "holiday" && !schoolDays.includes(isodow)) { skippedOff += 1; continue; }
+    dates.push(d.toISOString().slice(0, 10));
+  }
+  if (dates.length === 0) return { ok: false, message: "Semua tanggal pada rentang ini sudah bukan hari sekolah, jadi tidak ada yang perlu ditambahkan." };
+
+  const { data, error } = await supabase
+    .from("school_calendar")
+    .upsert(dates.map((d) => ({ calendar_date: d, kind, description, created_by: user.id })), { onConflict: "calendar_date,kind", ignoreDuplicates: true })
+    .select("id");
+  if (error) return { ok: false, message: friendlyDbError(error) };
+  const added = data?.length ?? 0;
+  const existed = dates.length - added;
   revalidatePath("/settings/school-calendar");
-  return { ok: true, message: "Entri kalender ditambahkan." };
+  const notes = [skippedOff > 0 ? `${skippedOff} hari akhir pekan dilewati` : "", existed > 0 ? `${existed} tanggal sudah ada` : ""].filter(Boolean).join(", ");
+  return { ok: true, message: `${added} tanggal ditambahkan${notes ? ` (${notes})` : ""}.` };
 }
 
 export async function deleteCalendarAction(id: string): Promise<ActionState> {
