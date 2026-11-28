@@ -14,6 +14,7 @@ import { Input, Select } from "@/components/ui/field";
 import { FilterBar, FilterField } from "@/components/ui/filter-bar";
 import { ClassBars, DistributionDonut, TrendLine } from "@/components/charts/attendance-charts";
 import { loadDashboard } from "@/lib/data/dashboard";
+import { loadDayInfo, noSessionText } from "@/lib/data/day-info";
 import { ensureBackupReminder, loadBackupStatus } from "@/lib/backup/reminder";
 import { asDate, asUuid, loadClasses, loadYears, pickYear } from "@/lib/data/lookups";
 import { formatRate, STATUS_KEYS } from "@/lib/attendance-calc";
@@ -53,7 +54,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
   const classNames = new Map(classes.map((c) => [c.id, c.name]));
   const isApprover = user.roles.some((r) => APPROVER_ROLES.includes(r));
 
-  const data = await loadDashboard(date, classId, classNames);
+  const [data, dayInfo] = await Promise.all([loadDashboard(date, classId, classNames), loadDayInfo(date)]);
 
   // Pengingat cadangan: hanya super admin. Kegagalan di sini tidak boleh merusak dashboard.
   let backup: Awaited<ReturnType<typeof loadBackupStatus>> | null = null;
@@ -155,6 +156,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
         tally={dayTally}
         total={data.totalStudents}
         actions={heroActions}
+        closedDay={noSessionText(dayInfo)}
       />
 
       {backup?.stale && (

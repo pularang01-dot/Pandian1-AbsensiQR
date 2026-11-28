@@ -4,6 +4,8 @@ import { ClipboardList, ScanLine } from "lucide-react";
 import { ADMIN_ROLES } from "@/lib/auth/roles";
 import { requireRole } from "@/lib/auth/session";
 import { createClient } from "@/lib/supabase/server";
+import { loadDayInfo } from "@/lib/data/day-info";
+import { NoSessionNotice } from "@/components/attendance/no-session-notice";
 import { PageHeader } from "@/components/ui/page-header";
 import { EmptyState, ErrorState } from "@/components/ui/states";
 import { Input, Select } from "@/components/ui/field";
@@ -43,6 +45,7 @@ export default async function ClassAttendancePage({ searchParams }: { searchPara
   const askedDate = /^\d{4}-\d{2}-\d{2}$/.test(sp.tanggal ?? "") ? (sp.tanggal as string) : "";
   const backdate = canBackdate && askedDate >= minDate && askedDate <= maxDate ? askedDate : "";
   const day = backdate || today;
+  const dayInfo = await loadDayInfo(day);
 
   const header = (
     <PageHeader
@@ -103,6 +106,7 @@ export default async function ClassAttendancePage({ searchParams }: { searchPara
   return (
     <>
       {header}
+      <NoSessionNotice info={dayInfo} />
       {(selectable.length > 1 || canBackdate) && (
         <form className="card mb-4 flex flex-wrap items-end gap-3 p-4" action="/attendance/class">
           {selectable.length > 1 && (

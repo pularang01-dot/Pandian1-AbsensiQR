@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { CalendarClock, type LucideIcon } from "lucide-react";
+import { CalendarClock, CalendarOff, type LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export type MarkKey = "present" | "late" | "sick" | "permission" | "official_activity" | "unexcused" | "unverified" | "unrecorded";
@@ -76,11 +76,12 @@ function Stat({ label, value, unit, hint }: { label: string; value: string; unit
 }
 
 export function DayHeader({
-  weekday, day, monthYear, greeting, name, yearName, isToday, hasSession, seen, unrecorded, rateValue, tally, total, actions,
+  weekday, day, monthYear, greeting, name, yearName, isToday, hasSession, seen, unrecorded, rateValue, tally, total, actions, closedDay,
 }: {
   weekday: string; day: string; monthYear: string; greeting: string; name: string; yearName?: string; isToday: boolean;
   hasSession: boolean; seen: number; unrecorded: number; rateValue: string | null; tally: Tally; total: number;
   actions: { href: string; label: string; icon: LucideIcon }[];
+  closedDay?: { title: string; text: string } | null;
 }) {
   const nf = (n: number) => n.toLocaleString("id-ID");
   return (
@@ -107,7 +108,15 @@ export function DayHeader({
             </div>
           </div>
 
-          {hasSession ? (
+          {closedDay ? (
+            <div role="status" className="mt-6 flex items-start gap-4 rounded-xl border border-dashed border-[#F5B82E]/70 bg-[#F5B82E]/10 p-5">
+              <span aria-hidden className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[#F5B82E] text-navy"><CalendarOff className="h-5 w-5" /></span>
+              <div className="min-w-0">
+                <p className="text-base font-semibold">{closedDay.title}</p>
+                <p className="mt-1 text-sm leading-relaxed text-white/75">{closedDay.text}</p>
+              </div>
+            </div>
+          ) : hasSession ? (
             <div className="mt-6">
               <div className="flex divide-x divide-white/15">
                 <Stat label="Sudah masuk" value={nf(seen)} hint={`dari ${nf(total)} siswa aktif`} />
